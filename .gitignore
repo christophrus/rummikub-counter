@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Build
+dist/
+build/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# EasyOCR Models (werden beim Docker-Build geladen)
+*.pth
