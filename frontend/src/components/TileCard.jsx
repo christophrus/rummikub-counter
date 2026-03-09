@@ -8,7 +8,7 @@ function TileCard({ tile }) {
       <div className="tile-card tile-joker">
         <span className="tile-number">🃏</span>
         <span className="tile-label">Joker</span>
-        <span className="tile-points">30 Pkt</span>
+        <span className="tile-points">20 Pkt</span>
       </div>
     );
   }

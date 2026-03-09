@@ -11,7 +11,7 @@ import cv2
 
 from app.models.schemas import AnalysisResult, DetectedTile
 from app.services.tile_detector import detect_tiles, draw_detections
-from app.services.ocr_service import recognize_number
+from app.services.ocr_service import recognize_number, is_joker
 from app.utils.image_processing import (
     load_image_from_bytes,
     preprocess_image,
@@ -66,6 +66,17 @@ async def analyze_image(file: UploadFile = File(...)):
         tile_image = extract_tile_region(processed, x, y, w, h)
 
         if tile_image.size == 0:
+            continue
+
+        # Joker-Erkennung (Farbvielfalt-Analyse)
+        if is_joker(tile_image):
+            detected_tiles.append(DetectedTile(
+                number=None,
+                confidence=0.8,
+                is_joker=True,
+                x=x, y=y, width=w, height=h,
+            ))
+            total_score += 20
             continue
 
         # Zahlenerkennung (Deep Learning mit EasyOCR)

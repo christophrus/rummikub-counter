@@ -115,6 +115,28 @@ def recognize_number(tile_image: np.ndarray) -> dict:
     return best_result
 
 
+def is_joker(tile_image: np.ndarray) -> bool:
+    """
+    Erkennt ob ein Stein ein Joker ist.
+
+    Joker haben ein buntes Symbol statt einer Zahl.
+    Erkennung über hohe Farbvielfalt (Standardabweichung im H-Kanal).
+    """
+    hsv = cv2.cvtColor(tile_image, cv2.COLOR_BGR2HSV)
+    s_channel = hsv[:, :, 1]
+
+    # Nur gesättigte Pixel betrachten (nicht den cremefarbigen Hintergrund)
+    saturated_mask = s_channel > 50
+    if cv2.countNonZero(saturated_mask.astype(np.uint8)) < 20:
+        return False
+
+    h_values = hsv[:, :, 0][saturated_mask]
+    h_std = np.std(h_values)
+
+    # Joker haben typischerweise eine hohe Farbvielfalt
+    return h_std > 40
+
+
 def recognize_batch(tile_images: list[np.ndarray]) -> list[dict]:
     """
     Erkennt Zahlen auf mehreren Steinen.
