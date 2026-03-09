@@ -89,56 +89,6 @@
   gap: 0.75rem;
 }
 
-/* Color Summary */
-.color-summary {
-  background: rgba(15, 52, 96, 0.3);
-  border-radius: var(--border-radius);
-  padding: 1.5rem;
-}
-
-.color-summary h2 {
-  font-size: 1.1rem;
-  margin-bottom: 1rem;
-}
-
-.color-bars {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.color-bar {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.2);
-}
-
-.color-name {
-  font-weight: 600;
-  text-transform: capitalize;
-  min-width: 80px;
-}
-
-.color-count {
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  flex: 1;
-}
-
-.color-score {
-  font-weight: 700;
-}
-
-.color-rot { border-left: 4px solid var(--tile-red); }
-.color-blau { border-left: 4px solid var(--tile-blue); }
-.color-schwarz { border-left: 4px solid var(--tile-black); }
-.color-orange { border-left: 4px solid var(--tile-orange); }
-.color-joker { border-left: 4px solid var(--warning); }
-.color-unbekannt { border-left: 4px solid var(--text-secondary); }
-
 /* Reset */
 .reset-section {
   text-align: center;

@@ -4,14 +4,6 @@ import './ResultDisplay.css';
 function ResultDisplay({ result, uploadedImage, onReset }) {
   const { tiles, total_score, tile_count, processing_time_ms } = result;
 
-  // Steine nach Farbe gruppieren
-  const colorGroups = {};
-  tiles.forEach((tile) => {
-    const color = tile.is_joker ? 'joker' : (tile.color || 'unbekannt');
-    if (!colorGroups[color]) colorGroups[color] = [];
-    colorGroups[color].push(tile);
-  });
-
   const recognizedTiles = tiles.filter((t) => t.number !== null || t.is_joker);
   const unrecognizedTiles = tiles.filter((t) => t.number === null && !t.is_joker);
 
@@ -64,25 +56,6 @@ function ResultDisplay({ result, uploadedImage, onReset }) {
             {unrecognizedTiles.map((tile, index) => (
               <TileCard key={`unknown-${index}`} tile={tile} />
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* Farb-Zusammenfassung */}
-      {Object.keys(colorGroups).length > 0 && (
-        <div className="color-summary">
-          <h2>Nach Farbe</h2>
-          <div className="color-bars">
-            {Object.entries(colorGroups).map(([color, groupTiles]) => {
-              const groupScore = groupTiles.reduce((sum, t) => sum + (t.number || (t.is_joker ? 30 : 0)), 0);
-              return (
-                <div key={color} className={`color-bar color-${color}`}>
-                  <span className="color-name">{color}</span>
-                  <span className="color-count">{groupTiles.length} Steine</span>
-                  <span className="color-score">{groupScore} Punkte</span>
-                </div>
-              );
-            })}
           </div>
         </div>
       )}

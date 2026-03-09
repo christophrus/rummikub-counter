@@ -1,14 +1,7 @@
 import './TileCard.css';
 
-const COLOR_EMOJIS = {
-  rot: '🔴',
-  blau: '🔵',
-  schwarz: '⚫',
-  orange: '🟠',
-};
-
 function TileCard({ tile }) {
-  const { number, color, confidence, is_joker } = tile;
+  const { number, confidence, is_joker } = tile;
 
   if (is_joker) {
     return (
@@ -20,13 +13,10 @@ function TileCard({ tile }) {
     );
   }
 
-  const colorClass = color ? `tile-${color}` : '';
-  const emoji = COLOR_EMOJIS[color] || '❓';
   const confidencePercent = Math.round((confidence || 0) * 100);
 
   return (
-    <div className={`tile-card ${colorClass}`}>
-      <span className="tile-color-dot">{emoji}</span>
+    <div className="tile-card">
       <span className="tile-number">
         {number !== null ? number : '?'}
       </span>

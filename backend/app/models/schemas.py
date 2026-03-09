@@ -9,7 +9,6 @@ class DetectedTile(BaseModel):
     """Ein einzelner erkannter Rummikub-Stein."""
 
     number: int | None = None
-    color: str | None = None
     confidence: float = 0.0
     is_joker: bool = False
     x: int = 0

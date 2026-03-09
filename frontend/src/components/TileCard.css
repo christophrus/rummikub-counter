@@ -42,31 +42,6 @@
   color: var(--text-secondary);
 }
 
-/* Farb-Varianten */
-.tile-rot {
-  border-color: rgba(231, 76, 60, 0.5);
-  background: rgba(231, 76, 60, 0.1);
-}
-.tile-rot .tile-number { color: var(--tile-red); }
-
-.tile-blau {
-  border-color: rgba(52, 152, 219, 0.5);
-  background: rgba(52, 152, 219, 0.1);
-}
-.tile-blau .tile-number { color: var(--tile-blue); }
-
-.tile-schwarz {
-  border-color: rgba(44, 62, 80, 0.5);
-  background: rgba(44, 62, 80, 0.15);
-}
-.tile-schwarz .tile-number { color: #bdc3c7; }
-
-.tile-orange {
-  border-color: rgba(230, 126, 34, 0.5);
-  background: rgba(230, 126, 34, 0.1);
-}
-.tile-orange .tile-number { color: var(--tile-orange); }
-
 .tile-joker {
   border-color: rgba(243, 156, 18, 0.5);
   background: linear-gradient(135deg, rgba(231, 76, 60, 0.1), rgba(52, 152, 219, 0.1), rgba(243, 156, 18, 0.1));

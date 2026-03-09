@@ -12,7 +12,6 @@ import cv2
 from app.models.schemas import AnalysisResult, DetectedTile
 from app.services.tile_detector import detect_tiles, draw_detections
 from app.services.ocr_service import recognize_number
-from app.services.color_detector import detect_color, is_joker
 from app.utils.image_processing import (
     load_image_from_bytes,
     preprocess_image,
@@ -33,8 +32,7 @@ async def analyze_image(file: UploadFile = File(...)):
     1. Bild laden und vorverarbeiten
     2. Steine im Bild lokalisieren (OpenCV)
     3. Für jeden Stein: Zahl erkennen (EasyOCR Deep Learning)
-    4. Für jeden Stein: Farbe erkennen (HSV-Analyse)
-    5. Punkte berechnen und zurückgeben
+    4. Punkte berechnen und zurückgeben
     """
     start_time = time.time()
 
@@ -70,34 +68,14 @@ async def analyze_image(file: UploadFile = File(...)):
         if tile_image.size == 0:
             continue
 
-        # Joker-Erkennung
-        joker = is_joker(tile_image)
-
-        if joker:
-            detected_tiles.append(DetectedTile(
-                number=None,
-                color=None,
-                confidence=0.8,
-                is_joker=True,
-                x=x, y=y, width=w, height=h,
-            ))
-            # Joker = 30 Punkte im Rummikub
-            total_score += 30
-            continue
-
         # Zahlenerkennung (Deep Learning mit EasyOCR)
         ocr_result = recognize_number(tile_image)
 
-        # Farberkennung (HSV-Analyse)
-        color_result = detect_color(tile_image)
-
         number = ocr_result.get("number")
         confidence = ocr_result.get("confidence", 0.0)
-        color = color_result.get("color")
 
         detected_tiles.append(DetectedTile(
             number=number,
-            color=color,
             confidence=confidence,
             is_joker=False,
             x=x, y=y, width=w, height=h,
@@ -139,13 +117,11 @@ async def analyze_image_debug(file: UploadFile = File(...)):
         x, y, w, h = tile_info["x"], tile_info["y"], tile_info["w"], tile_info["h"]
         tile_image = extract_tile_region(processed, x, y, w, h)
         if tile_image.size == 0:
-            results.append({"number": None, "color": None})
+            results.append({"number": None})
             continue
         ocr_result = recognize_number(tile_image)
-        color_result = detect_color(tile_image)
         results.append({
             "number": ocr_result.get("number"),
-            "color": color_result.get("color"),
         })
 
     # Debug-Bild erzeugen
