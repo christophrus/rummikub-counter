@@ -83,6 +83,10 @@ def detect_tiles(image: np.ndarray) -> list[dict]:
         if len(vert_result) > len(best_tiles):
             best_tiles = _non_max_suppression(vert_result, overlap_thresh=0.3)
 
+    # Bounding Boxes leicht vergrößern, damit Zahlen nicht abgeschnitten werden
+    img_h, img_w = image.shape[:2]
+    _expand_tiles(best_tiles, img_w, img_h, expand_ratio=0.08)
+
     # Nach Position sortieren (oben-links nach unten-rechts)
     best_tiles.sort(key=lambda t: (t["y"] // 50, t["x"]))
 
@@ -817,6 +821,17 @@ def _non_max_suppression(tiles: list[dict], overlap_thresh: float = 0.3) -> list
             keep.append(tile)
 
     return keep
+
+
+def _expand_tiles(tiles: list[dict], img_w: int, img_h: int, expand_ratio: float = 0.08) -> None:
+    """Vergrößert Bounding Boxes proportional, damit Zahlen nicht abgeschnitten werden."""
+    for t in tiles:
+        dx = int(t["w"] * expand_ratio)
+        dy = int(t["h"] * expand_ratio)
+        t["x"] = max(0, t["x"] - dx)
+        t["y"] = max(0, t["y"] - dy)
+        t["w"] = min(img_w - t["x"], t["w"] + 2 * dx)
+        t["h"] = min(img_h - t["y"], t["h"] + 2 * dy)
 
 
 def _compute_iou(box1: dict, box2: dict) -> float:
