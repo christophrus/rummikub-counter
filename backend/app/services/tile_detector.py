@@ -56,7 +56,7 @@ def detect_tiles(image: np.ndarray) -> list[dict]:
     best_tiles = _non_max_suppression(best_tiles, overlap_thresh=0.3)
 
     # Steine mit unrealistischem Seitenverhältnis oder unrealistischer Größe entfernen
-    est_w, est_h = _estimate_single_tile_size(best_tiles, img_area)
+    est_w, est_h = _estimate_single_tile_size(best_tiles, img_area, image)
     min_tile_area = est_w * est_h * 0.25
     max_tile_area = est_w * est_h * 3.0
     img_h, img_w = image.shape[:2]
@@ -65,6 +65,23 @@ def detect_tiles(image: np.ndarray) -> list[dict]:
                   and 0.25 < (t["w"] / t["h"] if t["h"] > 0 else 0) < 1.5
                   and t["y"] > est_h * 0.05
                   and t["y"] + t["h"] < img_h - est_h * 0.05]
+
+    # Vertikales Splitting: Zu hohe Steine (multi-Reihen) aufteilen.
+    # Nur auf Steine nahe der geschätzten Einzelsteinbreite anwenden.
+    if best_tiles:
+        est_w2, est_h2 = _estimate_single_tile_size(best_tiles, img_area, image)
+        vert_result = []
+        for t in best_tiles:
+            if (t["h"] > est_h2 * 1.8
+                    and t["w"] < est_w2 * 1.8
+                    and t["w"] > est_w2 * 0.4):
+                splits = _split_tall_region(t, image, est_w2, est_h2)
+                if splits:
+                    vert_result.extend(splits)
+                    continue
+            vert_result.append(t)
+        if len(vert_result) > len(best_tiles):
+            best_tiles = _non_max_suppression(vert_result, overlap_thresh=0.3)
 
     # Nach Position sortieren (oben-links nach unten-rechts)
     best_tiles.sort(key=lambda t: (t["y"] // 50, t["x"]))
@@ -126,14 +143,21 @@ def _score_tile_set(tiles: list[dict], img_area: float) -> float:
     return score
 
 
-def _estimate_single_tile_size(tiles: list[dict], img_area: float) -> tuple[int, int]:
+def _estimate_single_tile_size(tiles: list[dict], img_area: float,
+                                image: np.ndarray | None = None) -> tuple[int, int]:
     """
     Schätzt die Größe eines einzelnen Steins anhand der bereits erkannten Steine.
     Returns (estimated_width, estimated_height).
     """
+    img_side = int(np.sqrt(img_area))
+    max_single = img_side // 5
+    min_single = img_side // 25  # Minimale Steingröße (~60px bei 1920er Bild)
+
     # Sammle Steine die einzeln aussehen (Aspektverhältnis ~0.5-0.9)
     singles = [t for t in tiles
-                if 0.4 < (t["w"] / t["h"] if t["h"] > 0 else 0) < 1.0]
+                if 0.4 < (t["w"] / t["h"] if t["h"] > 0 else 0) < 1.0
+                and t["w"] < max_single and t["h"] < max_single
+                and t["w"] > min_single and t["h"] > min_single]
 
     if len(singles) >= 3:
         med_w = int(np.median([t["w"] for t in singles]))
@@ -141,11 +165,21 @@ def _estimate_single_tile_size(tiles: list[dict], img_area: float) -> tuple[int,
         return med_w, med_h
 
     # Wenn keine Einzelsteine, nutze die Höhe der breitesten Regionen
-    # (Höhe eines Steins ist auch die Höhe einer zusammenhängenden Reihe)
     if tiles:
         heights = [t["h"] for t in tiles]
         med_h = int(np.median(heights))
-        est_w = int(med_h * 0.67)  # Steine ~2:3 Verhältnis
+        est_w = int(med_h * 0.67)
+
+        # Plausibilitätsprüfung: wenn est_w > 200px bei 1920er Bild,
+        # ist die Höhe wahrscheinlich von einem Multi-Reihen-Blob.
+        # Versuche Kantenabstand-Analyse als Alternative.
+        if image is not None and est_w > 200:
+            largest = max(tiles, key=lambda t: t["w"] * t["h"])
+            if largest["w"] > max_single:
+                edge_est = _estimate_tile_width_from_edges(image, largest)
+                if edge_est is not None:
+                    return edge_est
+
         return est_w, med_h
 
     # Letzter Fallback: Schätze aus Bildfläche
@@ -155,13 +189,75 @@ def _estimate_single_tile_size(tiles: list[dict], img_area: float) -> tuple[int,
     return est_w, est_h
 
 
+def _estimate_tile_width_from_edges(image: np.ndarray,
+                                     blob: dict) -> tuple[int, int] | None:
+    """
+    Schätzt die Steinbreite aus dem Kantenabstand innerhalb eines großen Blobs.
+    Nutzt Autokorrelation des binären Sättigungsprofils pro Zeile.
+    """
+    x, y, w, h = blob["x"], blob["y"], blob["w"], blob["h"]
+    roi = image[y:y+h, x:x+w]
+    if roi.size == 0 or w < 200:
+        return None
+
+    hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+    s = hsv[:, :, 1]
+    v = hsv[:, :, 2]
+    mask = ((s < 70) & (v > 120)).astype(np.uint8) * 255
+
+    # Blob in horizontale Bänder teilen und pro Band Autokorrelation berechnen
+    n_bands = max(2, h // 80)
+    band_h = h // n_bands
+    min_lag = max(80, w // 15)
+    max_lag = w // 2
+
+    best_lag = None
+    best_corr = 0.0
+
+    for b in range(n_bands):
+        by = b * band_h
+        bey = min(by + band_h, h)
+        band = mask[by:bey, :]
+        if band.shape[0] < 20:
+            continue
+
+        profile = np.sum(band > 0, axis=0).astype(np.float64)
+        if np.std(profile) < 1.0:
+            continue
+
+        profile -= np.mean(profile)
+        norm = np.dot(profile, profile)
+        if norm < 1.0:
+            continue
+
+        # Autokorrelation berechnen
+        corrs = np.zeros(max_lag - min_lag)
+        for lag in range(min_lag, max_lag):
+            corrs[lag - min_lag] = np.dot(profile[:-lag], profile[lag:]) / norm
+
+        # Nur lokale Maxima als echte Periodizitäten akzeptieren
+        for i in range(1, len(corrs) - 1):
+            lag = i + min_lag
+            c = corrs[i]
+            if c > corrs[i - 1] and c > corrs[i + 1] and c > best_corr:
+                best_corr = c
+                best_lag = lag
+
+    if best_lag is None or best_corr < 0.1:
+        return None
+
+    est_w = best_lag
+    est_h = int(est_w * 1.4)
+    return est_w, est_h
+
+
 def _split_merged_regions(tiles: list[dict], image: np.ndarray,
                            img_area: float) -> list[dict]:
     """
     Erkennt zu breite Regionen (mehrere zusammenhängende Steine)
     und teilt sie rekursiv in Einzelsteine auf.
     """
-    est_w, est_h = _estimate_single_tile_size(tiles, img_area)
+    est_w, est_h = _estimate_single_tile_size(tiles, img_area, image)
 
     # Mindestbreite für "sieht nach mehreren Steinen aus"
     merge_threshold = est_w * 1.5
@@ -288,6 +384,105 @@ def _find_edge_peaks(profile: np.ndarray, n_expected: int,
             positions.append(local_max_idx)
 
     return positions
+
+
+def _split_tall_region(region: dict, image: np.ndarray,
+                        est_w: int, est_h: int) -> list[dict]:
+    """
+    Teilt eine vertikal zu hohe Region (mehrere Reihen) in einzelne Reihen auf.
+    Nutzt horizontale Kantenerkennung (Sobel-Y) um Grenzen zwischen Reihen zu finden.
+    Prüft vorher, ob eine echte horizontale Lücke (dunkler Streifen) zwischen Reihen existiert.
+    """
+    x, y, w, h = region["x"], region["y"], region["w"], region["h"]
+    roi = image[y:y+h, x:x+w]
+
+    if roi.size == 0:
+        return []
+
+    # Prüfe ob eine echte horizontale Lücke existiert (z.B. Tisch/Halter zwischen Reihen)
+    # Eine echte Lücke = Helligkeit sinkt ab (vom Stein) und steigt wieder an (nächster Stein).
+    gray_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+    row_brightness = np.mean(gray_roi[:, int(w*0.1):int(w*0.9)], axis=1)
+
+    # Glätten
+    kernel_size = max(5, est_h // 8)
+    if kernel_size % 2 == 0:
+        kernel_size += 1
+    smoothed_brightness = cv2.GaussianBlur(row_brightness.reshape(-1, 1).astype(np.float32),
+                                            (1, kernel_size), 0).flatten()
+
+    # Suche nach einem echten Tal (bright → dark → bright) im mittleren Bereich
+    mid_start = int(h * 0.15)
+    mid_end = int(h * 0.85)
+    mid_profile = smoothed_brightness[mid_start:mid_end]
+
+    if len(mid_profile) < 10:
+        return []
+
+    min_pos_mid = int(np.argmin(mid_profile))
+    min_val = float(mid_profile[min_pos_mid])
+
+    # Helligkeit oberhalb und unterhalb des Minimums muss deutlich höher sein
+    above = mid_profile[:min_pos_mid]
+    below = mid_profile[min_pos_mid:]
+    if len(above) < 5 or len(below) < 5:
+        return []
+
+    max_above = float(np.max(above))
+    max_below = float(np.max(below))
+
+    # Beide Seiten müssen deutlich heller sein als das Minimum
+    if min_val > max_above * 0.65 or min_val > max_below * 0.65:
+        return []
+
+    n_rows = max(2, round(h / est_h))
+
+    # Horizontale Kanten erkennen (Sobel-Y): Grenzen zwischen Reihen
+    sobel_y = cv2.Sobel(gray_roi, cv2.CV_64F, 0, 1, ksize=3)
+    sobel_abs = np.abs(sobel_y)
+
+    # Horizontales Kantenprofil: Summe der horizontalen Kanten pro Zeile
+    mid_start = int(w * 0.1)
+    mid_end = int(w * 0.9)
+    edge_profile = np.sum(sobel_abs[:, mid_start:mid_end], axis=1)
+
+    # Glätten
+    kernel_size2 = max(3, est_h // 10)
+    if kernel_size2 % 2 == 0:
+        kernel_size2 += 1
+    smoothed = cv2.GaussianBlur(edge_profile.reshape(-1, 1).astype(np.float32),
+                                 (1, kernel_size2), 0).flatten()
+
+    # Peaks finden
+    split_positions = _find_edge_peaks(smoothed, n_rows, est_h)
+
+    if not split_positions:
+        # Fallback: Gleichmäßig aufteilen
+        row_h = h / n_rows
+        split_positions = [int(row_h * i) for i in range(1, n_rows)]
+
+    # Sub-tiles erstellen
+    sub_tiles = []
+    boundaries = [0] + split_positions + [h]
+
+    for i in range(len(boundaries) - 1):
+        sy = boundaries[i]
+        ey = boundaries[i + 1]
+        th = ey - sy
+
+        if th < est_h * 0.4:
+            continue
+
+        sub_tiles.append({
+            "x": x,
+            "y": y + sy,
+            "w": w,
+            "h": th,
+            "area": w * th,
+            "contour": None,
+        })
+
+    return sub_tiles if len(sub_tiles) >= 2 else []
 
 
 def _detect_by_table_diff(image: np.ndarray, img_area: float) -> list[dict]:
