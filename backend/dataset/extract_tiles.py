@@ -77,9 +77,13 @@ def _adjust_all_boxes(image: np.ndarray, tile_regions: list[dict]) -> str | list
     # Zustand
     state = {
         'active_idx': -1,     # welche Box wird gezogen
+        'selected_idx': -1,   # zuletzt angeklickte Box (bleibt nach Loslassen)
         'handle': HANDLE_NONE,
         'drag_start': (0, 0),
         'box_at_drag_start': [0, 0, 0, 0],
+        'drawing': False,     # Rechtsklick-Zeichnen aktiv
+        'draw_start': (0, 0), # Startposition (Bildkoordinaten)
+        'draw_end': (0, 0),   # Aktuelle Endposition (Bildkoordinaten)
     }
 
     def _hit_test(mx, my):
@@ -147,18 +151,44 @@ def _adjust_all_boxes(image: np.ndarray, tile_regions: list[dict]) -> str | list
             idx, handle = _hit_test(mx, my)
             if idx >= 0:
                 state['active_idx'] = idx
+                state['selected_idx'] = idx
                 state['handle'] = handle
                 state['drag_start'] = (mx, my)
                 state['box_at_drag_start'] = boxes[idx][:]
+            else:
+                state['selected_idx'] = -1
 
-        elif event == cv2.EVENT_MOUSEMOVE and state['active_idx'] >= 0:
-            dx = int((mx - state['drag_start'][0]) / scale)
-            dy = int((my - state['drag_start'][1]) / scale)
-            _apply_drag(state['active_idx'], state['handle'], dx, dy)
+        elif event == cv2.EVENT_MOUSEMOVE:
+            if state['active_idx'] >= 0:
+                dx = int((mx - state['drag_start'][0]) / scale)
+                dy = int((my - state['drag_start'][1]) / scale)
+                _apply_drag(state['active_idx'], state['handle'], dx, dy)
+            elif state['drawing']:
+                state['draw_end'] = (int(mx / scale), int(my / scale))
 
         elif event == cv2.EVENT_LBUTTONUP:
             state['active_idx'] = -1
             state['handle'] = HANDLE_NONE
+
+        elif event == cv2.EVENT_RBUTTONDOWN:
+            # Neue Box zeichnen starten
+            state['drawing'] = True
+            ix, iy = int(mx / scale), int(my / scale)
+            state['draw_start'] = (ix, iy)
+            state['draw_end'] = (ix, iy)
+
+        elif event == cv2.EVENT_RBUTTONUP:
+            if state['drawing']:
+                state['drawing'] = False
+                x1, y1 = state['draw_start']
+                x2, y2 = state['draw_end']
+                bx = max(0, min(x1, x2))
+                by = max(0, min(y1, y2))
+                bw = min(img_w - bx, abs(x2 - x1))
+                bh = min(img_h - by, abs(y2 - y1))
+                if bw >= 10 and bh >= 10:
+                    boxes.append([bx, by, bw, bh])
+                    state['selected_idx'] = len(boxes) - 1
 
     cv2.namedWindow(window_name, cv2.WINDOW_AUTOSIZE)
     cv2.setMouseCallback(window_name, _mouse_cb)
@@ -166,13 +196,24 @@ def _adjust_all_boxes(image: np.ndarray, tile_regions: list[dict]) -> str | list
     while True:
         frame = image.copy()
         for idx, (bx, by, bw, bh) in enumerate(boxes):
-            color = (0, 200, 255) if idx == state['active_idx'] else (0, 255, 0)
+            if idx == state['active_idx']:
+                color = (0, 200, 255)     # orange: wird gerade gezogen
+            elif idx == state['selected_idx']:
+                color = (255, 200, 0)     # cyan: ausgewählt
+            else:
+                color = (0, 255, 0)       # grün: normal
             cv2.rectangle(frame, (bx, by), (bx + bw, by + bh), color, 2)
             # Eckgriffe
             for px, py in [(bx, by), (bx + bw, by), (bx, by + bh), (bx + bw, by + bh)]:
                 cv2.circle(frame, (px, py), 4, (0, 200, 255), -1)
             cv2.putText(frame, f"#{idx+1}", (bx, by - 5),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+
+        # Vorschau der neuen Box beim Zeichnen
+        if state['drawing']:
+            x1, y1 = state['draw_start']
+            x2, y2 = state['draw_end']
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 255), 2)
 
         display = cv2.resize(frame, (disp_w, disp_h),
                              interpolation=cv2.INTER_AREA if scale < 1 else cv2.INTER_NEAREST)
@@ -186,13 +227,24 @@ def _adjust_all_boxes(image: np.ndarray, tile_regions: list[dict]) -> str | list
             return 'quit'
         elif key in (ord('r'), ord('R')):
             boxes = [b[:] for b in orig_boxes]
+            state['selected_idx'] = -1
+        elif key in (ord('d'), ord('D'), 0):
+            # Ausgewählte Box löschen (D oder Delete)
+            si = state['selected_idx']
+            if 0 <= si < len(boxes):
+                boxes.pop(si)
+                state['selected_idx'] = -1
+                state['active_idx'] = -1
 
     cv2.destroyWindow(window_name)
 
     # Angepasste Regionen zurückgeben
     result = []
     for idx, (bx, by, bw, bh) in enumerate(boxes):
-        t = dict(tile_regions[idx])
+        if idx < len(tile_regions):
+            t = dict(tile_regions[idx])
+        else:
+            t = {}  # manuell hinzugefügte Box
         t["x"], t["y"], t["w"], t["h"] = bx, by, bw, bh
         result.append(t)
     return result
@@ -347,8 +399,9 @@ def main():
 
     print("\nSteuerung:")
     print("  Schritt 1 – Boxen anpassen (OpenCV-Fenster):")
-    print("    Kanten/Ecken ziehen = Box-Größe ändern")
-    print("    Innenfläche ziehen  = Box verschieben")
+    print("    Linksklick ziehen   = Box verschieben / Kanten+Ecken skalieren")
+    print("    Rechtsklick ziehen  = Neue Box zeichnen")
+    print("    D / Delete          = Ausgewählte Box löschen")
     print("    R                   = Alle Boxen zurücksetzen")
     print("    Enter               = Übernehmen, weiter zum Labeln")
     print("    Q / Esc             = Beenden")
