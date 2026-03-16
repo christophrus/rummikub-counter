@@ -17,16 +17,21 @@ def load_image_from_bytes(image_bytes: bytes) -> np.ndarray:
     return image
 
 
-def preprocess_image(image: np.ndarray) -> np.ndarray:
-    """
-    Vorverarbeitung: Größe anpassen, Kontrast verbessern.
-    """
-    # Maximale Größe begrenzen (Performance)
-    max_dimension = 1920
+def resize_image(image: np.ndarray, max_dimension: int = 1920) -> np.ndarray:
+    """Größe anpassen ohne Kontrastveränderung. Für Steinerkennung."""
     h, w = image.shape[:2]
     if max(h, w) > max_dimension:
         scale = max_dimension / max(h, w)
         image = cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+    return image
+
+
+def preprocess_image(image: np.ndarray) -> np.ndarray:
+    """
+    Vorverarbeitung: Größe anpassen, Kontrast verbessern.
+    Für OCR-Erkennung auf einzelnen Steinen.
+    """
+    image = resize_image(image)
 
     # Kontrast mit CLAHE verbessern (Adaptive Histogram Equalization)
     lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)

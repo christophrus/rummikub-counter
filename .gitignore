@@ -6,6 +6,9 @@ __pycache__/
 .venv/
 venv/
 
+# Raw Datasets
+backend/dataset/
+
 # Build
 dist/
 build/

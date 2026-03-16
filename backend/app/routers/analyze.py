@@ -14,6 +14,7 @@ from app.services.tile_detector import detect_tiles, draw_detections
 from app.services.ocr_service import recognize_number, is_joker
 from app.utils.image_processing import (
     load_image_from_bytes,
+    resize_image,
     preprocess_image,
     extract_tile_region,
     encode_image_to_bytes,
@@ -48,22 +49,23 @@ async def analyze_image(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail=f"Bild konnte nicht geladen werden: {e}")
 
     # 2. Vorverarbeitung
-    processed = preprocess_image(image)
-    img_h, img_w = processed.shape[:2]
+    resized = resize_image(image)       # Nur Resize (für Steinerkennung)
+    enhanced = preprocess_image(image)   # Resize + CLAHE (für OCR)
+    img_h, img_w = resized.shape[:2]
 
-    # 3. Steine erkennen
-    tile_regions = detect_tiles(processed)
+    # 3. Steine erkennen (auf dem nicht-CLAHE Bild für besseren Kontrast)
+    tile_regions = detect_tiles(resized)
     logger.info(f"{len(tile_regions)} Steine erkannt.")
 
-    # 4. Jeden Stein analysieren
+    # 4. Jeden Stein analysieren (CLAHE-Bild für bessere OCR)
     detected_tiles = []
     total_score = 0
 
     for tile_info in tile_regions:
         x, y, w, h = tile_info["x"], tile_info["y"], tile_info["w"], tile_info["h"]
 
-        # Steinbereich ausschneiden
-        tile_image = extract_tile_region(processed, x, y, w, h)
+        # Steinbereich ausschneiden (aus CLAHE-Bild für OCR)
+        tile_image = extract_tile_region(enhanced, x, y, w, h)
 
         if tile_image.size == 0:
             continue
@@ -118,15 +120,16 @@ async def analyze_image_debug(file: UploadFile = File(...)):
 
     image_bytes = await file.read()
     image = load_image_from_bytes(image_bytes)
-    processed = preprocess_image(image)
+    resized = resize_image(image)
+    enhanced = preprocess_image(image)
 
-    tile_regions = detect_tiles(processed)
+    tile_regions = detect_tiles(resized)
 
     # Steine analysieren
     results = []
     for tile_info in tile_regions:
         x, y, w, h = tile_info["x"], tile_info["y"], tile_info["w"], tile_info["h"]
-        tile_image = extract_tile_region(processed, x, y, w, h)
+        tile_image = extract_tile_region(enhanced, x, y, w, h)
         if tile_image.size == 0:
             results.append({"number": None})
             continue
@@ -136,7 +139,7 @@ async def analyze_image_debug(file: UploadFile = File(...)):
         })
 
     # Debug-Bild erzeugen
-    debug_image = draw_detections(processed, tile_regions, results)
+    debug_image = draw_detections(resized, tile_regions, results)
     debug_bytes = encode_image_to_bytes(debug_image)
     debug_base64 = base64.b64encode(debug_bytes).decode("utf-8")
 
