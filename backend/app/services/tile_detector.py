@@ -66,6 +66,24 @@ def detect_tiles(image: np.ndarray) -> list[dict]:
                   and t["y"] > est_h * 0.05
                   and t["y"] + t["h"] < img_h - est_h * 0.05]
 
+    # Fallback: Wenn wenige Steine erkannt, weiße Objekte direkt suchen
+    # (effektiv für Steine auf dunklen Ständern mit Lücken)
+    if len(best_tiles) < 5:
+        white_tiles = _detect_by_white_objects(image, img_area)
+        # Kein horizontales Splitting — weiße Steine sind bereits getrennt
+        white_tiles = _non_max_suppression(white_tiles, overlap_thresh=0.3)
+        if len(white_tiles) > len(best_tiles):
+            est_w_w, est_h_w = _estimate_single_tile_size(white_tiles, img_area, image)
+            min_a = est_w_w * est_h_w * 0.25
+            max_a = est_w_w * est_h_w * 3.0
+            white_tiles = [t for t in white_tiles
+                           if min_a <= t["w"] * t["h"] <= max_a
+                           and 0.25 < (t["w"] / t["h"] if t["h"] > 0 else 0) < 1.5
+                           and t["y"] > est_h_w * 0.05
+                           and t["y"] + t["h"] < img_h - est_h_w * 0.05]
+            if len(white_tiles) > len(best_tiles):
+                best_tiles = white_tiles
+
     # Vertikales Splitting: Zu hohe Steine (multi-Reihen) aufteilen.
     # Nur auf Steine nahe der geschätzten Einzelsteinbreite anwenden.
     if best_tiles:
@@ -754,6 +772,168 @@ def _detect_by_adaptive_threshold(image: np.ndarray, img_area: float) -> list[di
     thresh = cv2.erode(thresh, kernel_erode, iterations=3)
 
     return _extract_tiles_from_mask(thresh, img_area)
+
+
+def _split_wide_by_mask(mask: np.ndarray, tile: dict,
+                         est_w: int) -> list[dict] | None:
+    """
+    Teilt einen breiten Blob anhand von Lücken in der Binärmaske.
+    Spalten mit wenigen weißen Pixeln = Grenzen zwischen Steinen.
+    """
+    x, y, w, h = tile["x"], tile["y"], tile["w"], tile["h"]
+    roi = mask[y:y+h, x:x+w]
+    if roi.size == 0:
+        return None
+
+    n_tiles = max(2, round(w / est_w))
+    col_sums = np.sum(roi > 0, axis=0).astype(float)
+
+    splits = []
+    for i in range(1, n_tiles):
+        center = int(w * i / n_tiles)
+        margin = int(est_w * 0.3)
+        s_start = max(0, center - margin)
+        s_end = min(w, center + margin)
+        if s_start >= s_end:
+            continue
+
+        min_idx = s_start + int(np.argmin(col_sums[s_start:s_end]))
+        # Nur teilen wenn echte Lücke (weniger als 50 % weiß)
+        if col_sums[min_idx] < h * 0.5:
+            splits.append(min_idx)
+
+    if not splits:
+        return None
+
+    boundaries = [0] + sorted(splits) + [w]
+    result = []
+    for i in range(len(boundaries) - 1):
+        sx = boundaries[i]
+        ex = boundaries[i + 1]
+        tw = ex - sx
+        if tw > est_w * 0.4:
+            result.append({
+                "x": x + sx, "y": y, "w": tw, "h": h,
+                "area": tw * h, "contour": None,
+            })
+
+    return result if len(result) >= 2 else None
+
+
+def _split_tall_by_mask(mask: np.ndarray, tile: dict,
+                         est_h: int) -> list[dict] | None:
+    """
+    Teilt einen hohen Blob anhand von Lücken in der Binärmaske.
+    Zeilen mit wenigen weißen Pixeln = Grenzen zwischen Steinreihen.
+    """
+    x, y, w, h = tile["x"], tile["y"], tile["w"], tile["h"]
+    roi = mask[y:y+h, x:x+w]
+    if roi.size == 0:
+        return None
+
+    n_rows = max(2, round(h / est_h))
+    row_sums = np.sum(roi > 0, axis=1).astype(float)
+
+    splits = []
+    for i in range(1, n_rows):
+        center = int(h * i / n_rows)
+        margin = int(est_h * 0.3)
+        s_start = max(0, center - margin)
+        s_end = min(h, center + margin)
+        if s_start >= s_end:
+            continue
+
+        min_idx = s_start + int(np.argmin(row_sums[s_start:s_end]))
+        if row_sums[min_idx] < w * 0.5:
+            splits.append(min_idx)
+
+    if not splits:
+        return None
+
+    boundaries = [0] + sorted(splits) + [h]
+    result = []
+    for i in range(len(boundaries) - 1):
+        sy = boundaries[i]
+        ey = boundaries[i + 1]
+        th = ey - sy
+        if th > est_h * 0.4:
+            result.append({
+                "x": x, "y": y + sy, "w": w, "h": th,
+                "area": w * th, "contour": None,
+            })
+
+    return result if len(result) >= 2 else None
+
+
+def _detect_by_white_objects(image: np.ndarray, img_area: float) -> list[dict]:
+    """
+    Erkennt weiße Steine direkt über hohe Helligkeit und niedrige Sättigung.
+    Besonders effektiv für Steine auf dunklen Ständern mit Lücken.
+    Nutzt zwei Durchgänge: globale Schwelle für gut beleuchtete Steine,
+    adaptive Schwelle für dunklere Reihen.
+    """
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    s = hsv[:, :, 1]
+    v = hsv[:, :, 2]
+
+    close_k = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
+    open_k = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+
+    # Pass 1: Strikte globale Schwelle (helle Steine, gut getrennt)
+    white = ((s < 50) & (v > 190)).astype(np.uint8) * 255
+    white = cv2.morphologyEx(white, cv2.MORPH_CLOSE, close_k)
+    white = cv2.morphologyEx(white, cv2.MORPH_OPEN, open_k)
+    tiles_strict = _extract_tiles_from_mask(white, img_area)
+
+    # Pass 2: Adaptive Schwelle (fängt dunklere Steine auf tieferen Reihen)
+    v_adaptive = cv2.adaptiveThreshold(
+        v, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY, 101, -30)
+    white_adapt = ((v_adaptive > 0) & (s < 50)).astype(np.uint8) * 255
+    white_adapt = cv2.morphologyEx(white_adapt, cv2.MORPH_CLOSE, close_k)
+    white_adapt = cv2.morphologyEx(white_adapt, cv2.MORPH_OPEN, open_k)
+    tiles_adaptive = _extract_tiles_from_mask(white_adapt, img_area)
+
+    # Beide Listen zusammenführen, Duplikate per NMS entfernen
+    all_tiles = tiles_strict + tiles_adaptive
+    tiles = _non_max_suppression(all_tiles, overlap_thresh=0.3)
+
+    # Vertikal zu hohe Blobs aufteilen (Reihen hintereinander)
+    if len(tiles) >= 3:
+        widths = sorted(t["w"] for t in tiles)
+        est_w = int(np.median(widths))
+        est_h = int(est_w * 1.4)
+        result = []
+        for t in tiles:
+            if t["h"] > est_h * 1.2 and t["w"] < est_w * 2.0:
+                # Zuerst maskenbasiert (zuverlässiger als Helligkeitsprofil)
+                splits = _split_tall_by_mask(white, t, est_h)
+                if not splits:
+                    splits = _split_tall_region(t, image, est_w, est_h)
+                if splits:
+                    result.extend(splits)
+                    continue
+            result.append(t)
+        tiles = result
+
+    # Horizontal: nebeneinander liegende Steine trennen
+    if len(tiles) >= 3:
+        portrait = [t for t in tiles if 0.4 < t["w"] / t["h"] < 1.0]
+        if len(portrait) >= 2:
+            est_w_single = int(np.median([t["w"] for t in portrait]))
+        else:
+            est_w_single = int(np.median([t["w"] for t in tiles]))
+        horiz_result = []
+        for t in tiles:
+            if t["w"] > est_w_single * 1.5:
+                sub = _split_wide_by_mask(white, t, est_w_single)
+                if sub:
+                    horiz_result.extend(sub)
+                    continue
+            horiz_result.append(t)
+        tiles = horiz_result
+
+    return tiles
 
 
 def _extract_tiles_from_mask(mask: np.ndarray, img_area: float) -> list[dict]:
