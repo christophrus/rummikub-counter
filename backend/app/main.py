@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import analyze
-from app.services.ocr_service import get_reader
+from app.services.cnn_classifier import load_model
 
 # Logging konfigurieren
 logging.basicConfig(
@@ -28,9 +28,9 @@ async def lifespan(app: FastAPI):
     Beim Start wird das EasyOCR-Modell vorgeladen.
     """
     logger.info("🚀 Starte Rummikub-Erkennung Backend...")
-    logger.info("📦 Lade EasyOCR Deep-Learning-Modell (CNN + LSTM)...")
-    get_reader()  # Modell vorladen
-    logger.info("✅ Modell geladen. Backend bereit!")
+    logger.info("📦 Lade CNN-Modell für Stein-Erkennung...")
+    load_model()
+    logger.info("✅ CNN-Modell geladen. Backend bereit!")
     yield
     logger.info("👋 Backend wird beendet.")
 
@@ -39,7 +39,7 @@ app = FastAPI(
     title="Rummikub Stein-Erkennung",
     description=(
         "API zur Erkennung von Rummikub-Steinen in Bildern. "
-        "Nutzt EasyOCR (Deep Learning: CNN + LSTM) für die Zahlenerkennung "
+        "Nutzt ein eigenes CNN-Modell für die Zahlenerkennung "
         "und OpenCV für die Stein-Segmentierung."
     ),
     version="1.0.0",
