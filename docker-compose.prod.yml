@@ -1,0 +1,46 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: rummikub-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    container_name: rummikub-backend
+    expose:
+      - "8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - CORS_ORIGINS=${CORS_ORIGINS:-}
+    volumes:
+      - easyocr-models:/root/.EasyOCR
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: rummikub-frontend
+    expose:
+      - "80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  easyocr-models:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local
