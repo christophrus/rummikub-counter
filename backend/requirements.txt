@@ -7,3 +7,4 @@ Pillow==11.1.0
 pydantic==2.10.4
 torch
 torchvision
+ultralytics

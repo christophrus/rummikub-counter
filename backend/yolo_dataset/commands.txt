@@ -1,0 +1,2 @@
+python label_for_yolo.py --images raw/ --split train
+python label_for_yolo.py --images raw_val/ --split val
