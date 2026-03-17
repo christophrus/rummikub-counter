@@ -6,12 +6,13 @@ import time
 import logging
 import base64
 
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Request
 import cv2
 
 from app.models.schemas import AnalysisResult, DetectedTile
 from app.services.tile_detector import detect_tiles, draw_detections
 from app.services.cnn_classifier import classify_tile
+from app.services.yolo_detector import detect_and_classify
 from app.utils.image_processing import (
     load_image_from_bytes,
     resize_image,
@@ -25,14 +26,18 @@ router = APIRouter()
 
 
 @router.post("/analyze", response_model=AnalysisResult)
-async def analyze_image(file: UploadFile = File(...)):
+async def analyze_image(request: Request, file: UploadFile = File(...)):
     """
     Analysiert ein hochgeladenes Bild von Rummikub-Steinen.
 
-    Pipeline:
+    Pipeline (YOLO-Modus):
+    1. Bild laden
+    2. YOLO erkennt und klassifiziert alle Steine in einem Schritt
+
+    Pipeline (CNN-Fallback):
     1. Bild laden und vorverarbeiten
     2. Steine im Bild lokalisieren (OpenCV)
-    3. Für jeden Stein: Zahl erkennen (eigenes CNN-Modell)
+    3. Für jeden Stein: Zahl erkennen (CNN)
     4. Punkte berechnen und zurückgeben
     """
     start_time = time.time()
@@ -48,31 +53,72 @@ async def analyze_image(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Bild konnte nicht geladen werden: {e}")
 
-    # 2. Vorverarbeitung
-    resized = resize_image(image)       # Nur Resize (für Steinerkennung)
-    enhanced = preprocess_image(image)   # Resize + CLAHE (für OCR)
+    detection_mode = getattr(request.app.state, "detection_mode", "cnn")
+
+    if detection_mode == "yolo":
+        detected_tiles, total_score, img_h, img_w = _analyze_yolo(image)
+    else:
+        detected_tiles, total_score, img_h, img_w = _analyze_cnn(image)
+
+    processing_time = (time.time() - start_time) * 1000
+
+    return AnalysisResult(
+        tiles=detected_tiles,
+        total_score=total_score,
+        tile_count=len(detected_tiles),
+        processing_time_ms=round(processing_time, 2),
+        image_width=img_w,
+        image_height=img_h,
+    )
+
+
+def _analyze_yolo(image):
+    """YOLO-Pipeline: Erkennung + Klassifikation in einem Schritt."""
+    resized = resize_image(image)
     img_h, img_w = resized.shape[:2]
 
-    # 3. Steine erkennen (auf dem nicht-CLAHE Bild für besseren Kontrast)
-    tile_regions = detect_tiles(resized)
-    logger.info(f"{len(tile_regions)} Steine erkannt.")
+    detections = detect_and_classify(resized)
+    logger.info(f"YOLO: {len(detections)} Steine erkannt.")
 
-    # 4. Jeden Stein analysieren (CLAHE-Bild für bessere OCR)
+    detected_tiles = []
+    total_score = 0
+
+    for det in detections:
+        detected_tiles.append(DetectedTile(
+            number=det["number"],
+            confidence=det["confidence"],
+            is_joker=det["is_joker"],
+            x=det["x"], y=det["y"],
+            width=det["w"], height=det["h"],
+        ))
+        if det["is_joker"]:
+            total_score += 20
+        elif det["number"] is not None:
+            total_score += det["number"]
+
+    return detected_tiles, total_score, img_h, img_w
+
+
+def _analyze_cnn(image):
+    """CNN-Pipeline: OpenCV-Erkennung + CNN-Klassifikation."""
+    resized = resize_image(image)
+    enhanced = preprocess_image(image)
+    img_h, img_w = resized.shape[:2]
+
+    tile_regions = detect_tiles(resized)
+    logger.info(f"OpenCV+CNN: {len(tile_regions)} Steine erkannt.")
+
     detected_tiles = []
     total_score = 0
 
     for tile_info in tile_regions:
         x, y, w, h = tile_info["x"], tile_info["y"], tile_info["w"], tile_info["h"]
-
-        # Steinbereich ausschneiden
         tile_image = extract_tile_region(enhanced, x, y, w, h)
 
         if tile_image.size == 0:
             continue
 
-        # CNN-Klassifikation (Zahl + Joker in einem Schritt)
         result = classify_tile(tile_image)
-
         number = result["number"]
         confidence = result["confidence"]
         is_joker_tile = result["is_joker"]
@@ -89,20 +135,11 @@ async def analyze_image(file: UploadFile = File(...)):
         elif number is not None:
             total_score += number
 
-    processing_time = (time.time() - start_time) * 1000
-
-    return AnalysisResult(
-        tiles=detected_tiles,
-        total_score=total_score,
-        tile_count=len(detected_tiles),
-        processing_time_ms=round(processing_time, 2),
-        image_width=img_w,
-        image_height=img_h,
-    )
+    return detected_tiles, total_score, img_h, img_w
 
 
 @router.post("/analyze-debug")
-async def analyze_image_debug(file: UploadFile = File(...)):
+async def analyze_image_debug(request: Request, file: UploadFile = File(...)):
     """
     Debug-Endpoint: Gibt das Bild mit eingezeichneten Erkennungen zurück.
     Nützlich zum Feintuning der Erkennung.
@@ -113,22 +150,25 @@ async def analyze_image_debug(file: UploadFile = File(...)):
     image_bytes = await file.read()
     image = load_image_from_bytes(image_bytes)
     resized = resize_image(image)
-    enhanced = preprocess_image(image)
 
-    tile_regions = detect_tiles(resized)
+    detection_mode = getattr(request.app.state, "detection_mode", "cnn")
 
-    # Steine analysieren
-    results = []
-    for tile_info in tile_regions:
-        x, y, w, h = tile_info["x"], tile_info["y"], tile_info["w"], tile_info["h"]
-        tile_image = extract_tile_region(enhanced, x, y, w, h)
-        if tile_image.size == 0:
-            results.append({"number": None})
-            continue
-        cnn_result = classify_tile(tile_image)
-        results.append({
-            "number": cnn_result["number"],
-        })
+    if detection_mode == "yolo":
+        detections = detect_and_classify(resized)
+        tile_regions = [{"x": d["x"], "y": d["y"], "w": d["w"], "h": d["h"]} for d in detections]
+        results = [{"number": d["number"]} for d in detections]
+    else:
+        enhanced = preprocess_image(image)
+        tile_regions = detect_tiles(resized)
+        results = []
+        for tile_info in tile_regions:
+            x, y, w, h = tile_info["x"], tile_info["y"], tile_info["w"], tile_info["h"]
+            tile_image = extract_tile_region(enhanced, x, y, w, h)
+            if tile_image.size == 0:
+                results.append({"number": None})
+                continue
+            cnn_result = classify_tile(tile_image)
+            results.append({"number": cnn_result["number"]})
 
     # Debug-Bild erzeugen
     debug_image = draw_detections(resized, tile_regions, results)

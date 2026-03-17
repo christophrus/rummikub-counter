@@ -11,7 +11,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import analyze
-from app.services.cnn_classifier import load_model
+from app.services.cnn_classifier import load_model as load_cnn
+from app.services.yolo_detector import load_yolo_model, MODEL_PATH as YOLO_MODEL_PATH
 
 # Logging konfigurieren
 logging.basicConfig(
@@ -25,12 +26,21 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """
     Startup/Shutdown Events.
-    Beim Start wird das EasyOCR-Modell vorgeladen.
+    Lädt YOLO-Modell (bevorzugt) oder CNN-Modell als Fallback.
     """
     logger.info("🚀 Starte Rummikub-Erkennung Backend...")
-    logger.info("📦 Lade CNN-Modell für Stein-Erkennung...")
-    load_model()
-    logger.info("✅ CNN-Modell geladen. Backend bereit!")
+
+    if YOLO_MODEL_PATH.exists():
+        logger.info("📦 Lade YOLOv8-Modell (Detection + Klassifikation)...")
+        load_yolo_model()
+        app.state.detection_mode = "yolo"
+        logger.info("✅ YOLO-Modell geladen. Backend bereit!")
+    else:
+        logger.info("📦 Lade CNN-Modell für Stein-Erkennung...")
+        load_cnn()
+        app.state.detection_mode = "cnn"
+        logger.info("✅ CNN-Modell geladen. Backend bereit (OpenCV + CNN Modus).")
+
     yield
     logger.info("👋 Backend wird beendet.")
 
@@ -39,8 +49,7 @@ app = FastAPI(
     title="Rummikub Stein-Erkennung",
     description=(
         "API zur Erkennung von Rummikub-Steinen in Bildern. "
-        "Nutzt ein eigenes CNN-Modell für die Zahlenerkennung "
-        "und OpenCV für die Stein-Segmentierung."
+        "Nutzt YOLOv8 oder CNN+OpenCV für Erkennung und Klassifikation."
     ),
     version="1.0.0",
     lifespan=lifespan,

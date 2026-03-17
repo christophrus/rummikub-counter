@@ -8,6 +8,12 @@ venv/
 
 # Raw Datasets
 backend/dataset/raw/
+backend/dataset/debug_tiles/
+backend/dataset/test/
+backend/dataset/tiles_augmented/
+backend/dataset/train/
+backend/dataset/val/
+
 
 # Build
 dist/
