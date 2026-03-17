@@ -8,7 +8,9 @@ venv/
 
 # Raw Datasets
 backend/dataset/raw/
+backend/dataset/runs/
 backend/dataset/debug_tiles/
+backend/dataset/tiles/
 backend/dataset/test/
 backend/dataset/tiles_augmented/
 backend/dataset/train/

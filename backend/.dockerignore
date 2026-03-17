@@ -8,3 +8,8 @@ build/
 venv/
 *.egg
 .mypy_cache/
+
+# Training data (not needed at runtime)
+dataset/
+yolo_dataset/
+runs/

@@ -1,7 +1,7 @@
 task: detect
 mode: train
 model: yolov8n.pt
-data: D:\Github\rummiKub-counter\backend\yolo_dataset\data.yaml
+data: D:\Github\rummiKub-counter\backend\yolo_dataset\data_quick.yaml
 epochs: 20
 time: null
 patience: 100

@@ -97,6 +97,7 @@ def main():
         imgsz=args.imgsz,
         batch=args.batch,
         device=device,
+        workers=0,
         project=str(SCRIPT_DIR / "runs" / "detect"),
         name="rummikub",
         exist_ok=True,

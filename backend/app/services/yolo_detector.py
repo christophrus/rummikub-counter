@@ -52,7 +52,7 @@ def detect_and_classify(image: np.ndarray, confidence_threshold: float = 0.25) -
     if _model is None:
         raise RuntimeError("YOLO-Modell nicht geladen. Zuerst load_yolo_model() aufrufen.")
 
-    results = _model(image, conf=confidence_threshold, verbose=False)
+    results = _model(image, conf=confidence_threshold, agnostic_nms=True, verbose=False)
 
     detected = []
     for result in results:
