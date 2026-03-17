@@ -169,7 +169,77 @@ rummiKub-counter/
 - **Frontend:** React 19, Vite 6, Axios
 - **Backend:** Python 3.11, FastAPI, Uvicorn
 - **KI/ML:** EasyOCR (PyTorch, CNN + LSTM), OpenCV
-- **Deployment:** Docker, Docker Compose, Nginx
+- **Deployment:** Docker, Docker Compose, Nginx, Caddy
+
+## 🌐 VPS-Deployment (Produktion)
+
+### Voraussetzungen
+
+- VPS mit mind. **2 GB RAM** (PyTorch + YOLO brauchen Speicher)
+- Docker und Docker Compose installiert
+- Eine Domain, die auf die VPS-IP zeigt (A-Record)
+
+### 1. Repository auf den VPS klonen
+
+```bash
+ssh user@dein-server
+git clone <repo-url>
+cd rummiKub-counter
+```
+
+### 2. Umgebungsvariablen konfigurieren
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+Die `DOMAIN` auf deine echte Domain setzen (z.B. `rummikub.meinedomain.de`).  
+Caddy holt sich automatisch ein Let's Encrypt SSL-Zertifikat.
+
+### 3. Deployment starten
+
+```bash
+chmod +x deploy.sh
+./deploy.sh
+```
+
+Oder manuell:
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+### 4. Überprüfen
+
+```bash
+# Container-Status
+docker compose -f docker-compose.prod.yml ps
+
+# Logs ansehen
+docker compose -f docker-compose.prod.yml logs -f
+
+# Health-Check
+curl https://deine-domain.de/health
+```
+
+### Architektur in Produktion
+
+```
+Internet → Caddy (HTTPS/443) → Nginx (Frontend + /api Proxy) → FastAPI Backend
+```
+
+- **Caddy** terminiert SSL (automatisches Let's Encrypt)
+- **Nginx** liefert die React-SPA und proxied `/api/` zum Backend
+- **FastAPI** verarbeitet die Bilderkennung
+
+### Updaten
+
+```bash
+cd rummiKub-counter
+git pull
+docker compose -f docker-compose.prod.yml up -d --build
+```
 
 ## 📝 Lizenz
 
