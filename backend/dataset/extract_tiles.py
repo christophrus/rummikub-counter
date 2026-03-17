@@ -268,17 +268,7 @@ def extract_tiles_from_image(image_path: Path, tile_counter: int) -> int:
         return tile_counter
 
     processed = resize_image(image)
-    tile_regions = detect_tiles(processed)
-
-    print(f"  {len(tile_regions)} Steine erkannt.")
-
-    if not tile_regions:
-        # Gesamtbild anzeigen zur Kontrolle
-        display = cv2.resize(processed, (800, 600)) if max(processed.shape[:2]) > 800 else processed
-        cv2.imshow("Keine Steine erkannt - Taste druecken", display)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-        return tile_counter
+    tile_regions = []  # Keine automatische Erkennung – alle Boxen manuell zeichnen
 
     # Alle Boxen auf dem Gesamtbild anpassen (Drag & Drop)
     adjusted = _adjust_all_boxes(processed, tile_regions)
