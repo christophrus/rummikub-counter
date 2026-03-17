@@ -6,6 +6,9 @@ um automatisch Vorschläge zu generieren. Du korrigierst dann nur noch.
 
 Nutzung:
     python label_for_yolo.py --images pfad/zu/bildern/
+    python label_for_yolo.py --edit-mode                  # Bereits gelabelte Bilder bearbeiten
+    python label_for_yolo.py --edit-mode --split val      # Val-Labels bearbeiten
+    python label_for_yolo.py --edit-mode 20260313_174707.jpg  # Einzelnes Bild bearbeiten
 
 Steuerung:
     Rechte Maustaste    → Bounding Box zeichnen (Klick + Ziehen)
@@ -256,29 +259,78 @@ def to_yolo_format(boxes: list, img_w: int, img_h: int) -> str:
     return "\n".join(lines)
 
 
+def from_yolo_format(yolo_txt: str, img_w: int, img_h: int) -> list:
+    """Liest YOLO-Format zurück in Bounding Boxes (x1, y1, x2, y2, cls)."""
+    boxes = []
+    for line in yolo_txt.strip().splitlines():
+        parts = line.strip().split()
+        if len(parts) != 5:
+            continue
+        cls = int(parts[0])
+        xc, yc, w, h = float(parts[1]), float(parts[2]), float(parts[3]), float(parts[4])
+        x1 = int((xc - w / 2) * img_w)
+        y1 = int((yc - h / 2) * img_h)
+        x2 = int((xc + w / 2) * img_w)
+        y2 = int((yc + h / 2) * img_h)
+        boxes.append((x1, y1, x2, y2, cls))
+    return boxes
+
+
 def main():
     parser = argparse.ArgumentParser(description="YOLO Labeling Tool für Rummikub")
-    parser.add_argument("--images", type=str, required=True, help="Ordner mit Gesamtbildern")
+    parser.add_argument("--images", type=str, required=False, help="Ordner mit Gesamtbildern")
     parser.add_argument("--split", type=str, default="train", choices=["train", "val", "test"],
                         help="Ziel-Split (Standard: train)")
+    parser.add_argument("--edit-mode", nargs="?", const=True, default=False,
+                        metavar="FILENAME",
+                        help="Bereits gelabelte Bilder bearbeiten (optional: einzelnes Bild angeben, z.B. --edit-mode 20260313_174707.jpg)")
     args = parser.parse_args()
 
-    images_dir = Path(args.images)
-    if not images_dir.exists():
-        print(f"Fehler: {images_dir} existiert nicht.")
-        return
+    edit_mode = bool(args.edit_mode)
 
-    image_files = sorted(
-        list(images_dir.glob("*.jpg")) +
-        list(images_dir.glob("*.jpeg")) +
-        list(images_dir.glob("*.png"))
-    )
+    out_images = YOLO_DIR / args.split / "images"
+    out_labels = YOLO_DIR / args.split / "labels"
+    out_images.mkdir(parents=True, exist_ok=True)
+    out_labels.mkdir(parents=True, exist_ok=True)
 
-    if not image_files:
-        print(f"Keine Bilder in {images_dir} gefunden.")
-        return
-
-    print(f"{len(image_files)} Bilder gefunden.")
+    if edit_mode:
+        # Im Edit-Modus: bereits gelabelte Bilder laden
+        if isinstance(args.edit_mode, str):
+            # Einzelnes Bild angegeben
+            target = out_images / args.edit_mode
+            if not target.exists():
+                # Auch ohne Extension versuchen
+                matches = list(out_images.glob(f"{Path(args.edit_mode).stem}.*"))
+                if matches:
+                    target = matches[0]
+                else:
+                    print(f"Bild '{args.edit_mode}' nicht in {out_images} gefunden.")
+                    return
+            image_files = [target]
+            print(f"Edit-Modus: Bearbeite {target.name}")
+        else:
+            image_files = sorted(list(out_images.glob("*.jpg")) + list(out_images.glob("*.jpeg")) + list(out_images.glob("*.png")))
+            if not image_files:
+                print(f"Keine gelabelten Bilder in {out_images} gefunden.")
+                return
+            print(f"Edit-Modus: {len(image_files)} gelabelte Bilder gefunden.")
+    else:
+        if not args.images:
+            print("Fehler: --images ist erforderlich (oder --edit-mode verwenden).")
+            return
+        images_dir = Path(args.images)
+        if not images_dir.exists():
+            print(f"Fehler: {images_dir} existiert nicht.")
+            return
+        image_files = sorted(
+            list(images_dir.glob("*.jpg")) +
+            list(images_dir.glob("*.jpeg")) +
+            list(images_dir.glob("*.png"))
+        )
+        if not image_files:
+            print(f"Keine Bilder in {images_dir} gefunden.")
+            return
+        print(f"{len(image_files)} Bilder gefunden.")
 
     # YOLO-Modell bevorzugen, CNN als Fallback
     if not _load_yolo_if_available():
@@ -286,13 +338,8 @@ def main():
         load_model()
     print("  Tipp: Drücke 't' um YOLO mit bisherigen Labels zu trainieren.")
 
-    out_images = YOLO_DIR / args.split / "images"
-    out_labels = YOLO_DIR / args.split / "labels"
-    out_images.mkdir(parents=True, exist_ok=True)
-    out_labels.mkdir(parents=True, exist_ok=True)
-
-    # Bereits gelabelte Bilder überspringen
-    existing = {p.stem for p in out_images.glob("*")}
+    # Bereits gelabelte Bilder überspringen (nur im Normal-Modus)
+    existing = {p.stem for p in out_images.glob("*")} if not edit_mode else set()
 
     total_labeled = 0
     window_name = "Rummikub YOLO Labeling"
@@ -317,7 +364,21 @@ def main():
 
         print(f"\n[{i+1}/{len(image_files)}] {img_path.name} ({w}x{h}, Anzeige: {display_img.shape[1]}x{display_img.shape[0]})")
 
-        annotator = BBoxAnnotator(display_img, [])
+        # Im Edit-Modus: bestehende Labels laden
+        initial_boxes = []
+        if edit_mode:
+            label_path = out_labels / (img_path.stem + ".txt")
+            if label_path.exists():
+                yolo_txt = label_path.read_text(encoding="utf-8")
+                orig_boxes = from_yolo_format(yolo_txt, w, h)
+                # Auf Display-Größe skalieren
+                initial_boxes = [
+                    (int(x1*display_scale), int(y1*display_scale), int(x2*display_scale), int(y2*display_scale), c)
+                    for (x1, y1, x2, y2, c) in orig_boxes
+                ]
+                print(f"  {len(initial_boxes)} bestehende Boxen geladen.")
+
+        annotator = BBoxAnnotator(display_img, initial_boxes)
         annotator._redraw()
 
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
@@ -410,22 +471,40 @@ def main():
                 if len(train_imgs) < 5:
                     print(f"  Zu wenige Labels ({len(train_imgs)}). Mindestens 5 zum Trainieren.")
                 else:
-                    print(f"  Quick-Training mit {len(train_imgs)} Bildern (20 Epochen)...")
+                    epochs = 50 if len(train_imgs) < 20 else 30
+                    print(f"  Quick-Training mit {len(train_imgs)} Bildern ({epochs} Epochen)...")
                     cv2.destroyAllWindows()
                     try:
                         from ultralytics import YOLO as UltralyticsYOLO
-                        data_yaml = str((YOLO_DIR / "data.yaml").resolve())
                         import torch
+                        import yaml
+
                         device = "0" if torch.cuda.is_available() else "cpu"
-                        yolo = UltralyticsYOLO("yolov8n.pt")
+                        # Vom vorherigen Modell weitertrainieren wenn vorhanden
+                        base_model = str(YOLO_MODEL) if YOLO_MODEL.exists() else "yolov8n.pt"
+                        yolo = UltralyticsYOLO(base_model)
                         val_imgs = list((YOLO_DIR / "val" / "images").glob("*"))
+                        has_val = len(val_imgs) > 0
+
+                        # Temporäre data.yaml ohne val wenn keine Val-Bilder vorhanden
+                        orig_yaml = YOLO_DIR / "data.yaml"
+                        with open(orig_yaml, "r", encoding="utf-8") as f:
+                            data_cfg = yaml.safe_load(f)
+                        if not has_val:
+                            data_cfg["val"] = data_cfg["train"]  # YOLO braucht val-Eintrag
+                        tmp_yaml = YOLO_DIR / "data_quick.yaml"
+                        with open(tmp_yaml, "w", encoding="utf-8") as f:
+                            yaml.dump(data_cfg, f, default_flow_style=False)
+
                         yolo.train(
-                            data=data_yaml, epochs=20, imgsz=640, batch=16,
+                            data=str(tmp_yaml.resolve()), epochs=epochs, imgsz=640, batch=16,
                             device=device, project=str(SCRIPT_DIR / "runs" / "detect"),
                             name="quick", exist_ok=True, verbose=False,
-                            val=len(val_imgs) > 0,
+                            val=has_val, workers=0,
                         )
-                        best = SCRIPT_DIR / "runs" / "detect" / "quick" / "weights" / "best.pt"
+                        # best.pt nur wenn Validierung aktiv, sonst last.pt
+                        weights_dir = SCRIPT_DIR / "runs" / "detect" / "quick" / "weights"
+                        best = weights_dir / ("best.pt" if has_val else "last.pt")
                         if best.exists():
                             import shutil
                             YOLO_MODEL.parent.mkdir(parents=True, exist_ok=True)
@@ -435,7 +514,7 @@ def main():
                     except Exception as e:
                         print(f"  Fehler beim Training: {e}")
                     cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-                    cv2.resizeWindow(window_name, image.shape[1], image.shape[0])
+                    cv2.resizeWindow(window_name, display_img.shape[1], display_img.shape[0])
                     cv2.setMouseCallback(window_name, annotator.mouse_callback)
 
     cv2.destroyAllWindows()

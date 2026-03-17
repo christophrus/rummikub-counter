@@ -1,2 +1,5 @@
 python label_for_yolo.py --images raw/ --split train
 python label_for_yolo.py --images raw_val/ --split val
+
+
+python label_for_yolo.py --edit-mode 20260313_174707.jpg
