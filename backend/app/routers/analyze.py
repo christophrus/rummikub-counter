@@ -11,7 +11,7 @@ import cv2
 
 from app.models.schemas import AnalysisResult, DetectedTile
 from app.services.tile_detector import detect_tiles, draw_detections
-from app.services.ocr_service import recognize_number, is_joker
+from app.services.cnn_classifier import classify_tile
 from app.utils.image_processing import (
     load_image_from_bytes,
     resize_image,
@@ -32,7 +32,7 @@ async def analyze_image(file: UploadFile = File(...)):
     Pipeline:
     1. Bild laden und vorverarbeiten
     2. Steine im Bild lokalisieren (OpenCV)
-    3. Für jeden Stein: Zahl erkennen (EasyOCR Deep Learning)
+    3. Für jeden Stein: Zahl erkennen (eigenes CNN-Modell)
     4. Punkte berechnen und zurückgeben
     """
     start_time = time.time()
@@ -64,37 +64,29 @@ async def analyze_image(file: UploadFile = File(...)):
     for tile_info in tile_regions:
         x, y, w, h = tile_info["x"], tile_info["y"], tile_info["w"], tile_info["h"]
 
-        # Steinbereich ausschneiden (aus CLAHE-Bild für OCR)
+        # Steinbereich ausschneiden
         tile_image = extract_tile_region(enhanced, x, y, w, h)
 
         if tile_image.size == 0:
             continue
 
-        # Joker-Erkennung (Farbvielfalt-Analyse)
-        if is_joker(tile_image):
-            detected_tiles.append(DetectedTile(
-                number=None,
-                confidence=0.8,
-                is_joker=True,
-                x=x, y=y, width=w, height=h,
-            ))
-            total_score += 20
-            continue
+        # CNN-Klassifikation (Zahl + Joker in einem Schritt)
+        result = classify_tile(tile_image)
 
-        # Zahlenerkennung (Deep Learning mit EasyOCR)
-        ocr_result = recognize_number(tile_image)
-
-        number = ocr_result.get("number")
-        confidence = ocr_result.get("confidence", 0.0)
+        number = result["number"]
+        confidence = result["confidence"]
+        is_joker_tile = result["is_joker"]
 
         detected_tiles.append(DetectedTile(
             number=number,
             confidence=confidence,
-            is_joker=False,
+            is_joker=is_joker_tile,
             x=x, y=y, width=w, height=h,
         ))
 
-        if number is not None:
+        if is_joker_tile:
+            total_score += 20
+        elif number is not None:
             total_score += number
 
     processing_time = (time.time() - start_time) * 1000
@@ -133,9 +125,9 @@ async def analyze_image_debug(file: UploadFile = File(...)):
         if tile_image.size == 0:
             results.append({"number": None})
             continue
-        ocr_result = recognize_number(tile_image)
+        cnn_result = classify_tile(tile_image)
         results.append({
-            "number": ocr_result.get("number"),
+            "number": cnn_result["number"],
         })
 
     # Debug-Bild erzeugen

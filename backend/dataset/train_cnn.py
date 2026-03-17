@@ -114,15 +114,18 @@ def get_data_loaders(batch_size: int):
         print(f"  {idx:>2} → {cls_name}")
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size,
-                              shuffle=True, num_workers=0, pin_memory=True)
+                              shuffle=True, num_workers=4, pin_memory=True,
+                              persistent_workers=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size,
-                            shuffle=False, num_workers=0, pin_memory=True)
+                            shuffle=False, num_workers=4, pin_memory=True,
+                            persistent_workers=True)
 
     test_loader = None
     if TEST_DIR.exists():
         test_dataset = datasets.ImageFolder(str(TEST_DIR), transform=eval_transform)
         test_loader = DataLoader(test_dataset, batch_size=batch_size,
-                                 shuffle=False, num_workers=0, pin_memory=True)
+                                 shuffle=False, num_workers=4, pin_memory=True,
+                                 persistent_workers=True)
 
     return train_loader, val_loader, test_loader, train_dataset.class_to_idx
 
@@ -176,7 +179,7 @@ def evaluate(model, loader, criterion, device):
 def main():
     parser = argparse.ArgumentParser(description="Rummikub CNN Training")
     parser.add_argument("--epochs", type=int, default=30, help="Anzahl Epochen (Standard: 30)")
-    parser.add_argument("--batch-size", type=int, default=32, help="Batch Size (Standard: 32)")
+    parser.add_argument("--batch-size", type=int, default=64, help="Batch Size (Standard: 64)")
     parser.add_argument("--lr", type=float, default=0.001, help="Learning Rate (Standard: 0.001)")
     parser.add_argument("--patience", type=int, default=7, help="Early Stopping Patience (Standard: 7)")
     args = parser.parse_args()
