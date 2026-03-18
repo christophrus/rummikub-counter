@@ -61,6 +61,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",  # Vite Dev Server
         "http://localhost:3000",  # Alternative
+        "https://christophrus.github.io",  # GitHub Pages PWA
     ],
     allow_credentials=True,
     allow_methods=["*"],
