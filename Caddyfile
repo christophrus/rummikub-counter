@@ -1,3 +1,6 @@
 {$DOMAIN:localhost} {
+	request_body {
+		max_size 20MB
+	}
 	reverse_proxy frontend:80
 }
