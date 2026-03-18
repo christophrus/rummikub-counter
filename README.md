@@ -1,11 +1,11 @@
 # 🎲 Rummikub Stein-Erkennung
 
 Eine Web-App, die Rummikub-Steine auf Fotos erkennt und deren Punktzahl berechnet.
-Nutzt **Deep Learning (EasyOCR)** für die Zahlenerkennung und **OpenCV** für die Stein-Segmentierung.
+Nutzt **YOLOv8** für Erkennung und Klassifikation der Steine in einem einzigen Forward Pass.
 
 ![Tech Stack](https://img.shields.io/badge/React-19-blue)
 ![Tech Stack](https://img.shields.io/badge/FastAPI-0.115-green)
-![Tech Stack](https://img.shields.io/badge/EasyOCR-Deep%20Learning-orange)
+![Tech Stack](https://img.shields.io/badge/YOLOv8-Object%20Detection-orange)
 ![Tech Stack](https://img.shields.io/badge/Docker-Ready-blue)
 
 ## 🏗️ Architektur
@@ -16,30 +16,35 @@ Nutzt **Deep Learning (EasyOCR)** für die Zahlenerkennung und **OpenCV** für d
 │   React Frontend │                   │   FastAPI Backend        │
 │   (Vite)         │                   │                          │
 │   - Bild-Upload  │                   │   ┌──────────────────┐   │
-│   - Ergebnisse   │                   │   │ OpenCV           │   │
-│   - Punkte       │                   │   │ Stein-Erkennung  │   │
-│                  │                   │   └────────┬─────────┘   │
-└──────────────────┘                   │            │             │
-                                       │   ┌────────▼─────────┐   │
-                                       │   │ EasyOCR          │   │
-                                       │   │ CNN + LSTM       │   │
-                                       │   │ Zahlenerkennung  │   │
-                                       │   └────────┬─────────┘   │
-                                       │            │             │
-                                       │   ┌────────▼─────────┐   │
-                                       │   │ HSV-Analyse      │   │
-                                       │   │ Farberkennung    │   │
+│   - Ergebnisse   │                   │   │ YOLOv8           │   │
+│   - Punkte       │                   │   │ Detection +      │   │
+│                  │                   │   │ Klassifikation   │   │
+└──────────────────┘                   │   └──────────────────┘   │
+                                       │                          │
+                                       │   Fallback (ohne YOLO):  │
+                                       │   ┌──────────────────┐   │
+                                       │   │ OpenCV + CNN     │   │
+                                       │   │ Stein-Erkennung  │   │
                                        │   └──────────────────┘   │
                                        └──────────────────────────┘
 ```
 
 ## 🧠 Deep Learning Pipeline
 
-EasyOCR verwendet ein mehrstufiges Deep-Learning-Modell:
+### YOLOv8 (Standard)
 
-1. **Feature Extraction (CNN):** ResNet/VGG extrahiert visuelle Merkmale
-2. **Sequence Modeling (BiLSTM):** Bidirektionales LSTM verarbeitet die Feature-Sequenz
-3. **Prediction (CTC):** Connectionist Temporal Classification dekodiert den Text
+Ein eigens trainiertes YOLOv8-Modell erkennt und klassifiziert alle Steine in einem einzigen Forward Pass:
+
+1. **Detection:** Lokalisiert alle Rummikub-Steine im Bild (Bounding Boxes)
+2. **Klassifikation:** Erkennt gleichzeitig den Wert (1–13) oder Joker
+3. **NMS:** Non-Maximum Suppression filtert überlappende Detektionen
+
+### CNN + OpenCV (Fallback)
+
+Falls kein YOLO-Modell vorhanden ist, wird automatisch auf eine zweistufige Pipeline gewechselt:
+
+1. **OpenCV:** Stein-Segmentierung und Lokalisierung
+2. **CNN:** Klassifikation der einzelnen Stein-Ausschnitte
 
 ## 🚀 Schnellstart mit Docker
 
@@ -74,7 +79,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
-> ⚠️ Beim ersten Start wird das EasyOCR-Modell heruntergeladen (~100 MB).
+> ⚠️ Beim ersten Start werden die YOLO/PyTorch-Abhängigkeiten geladen.
 
 ### Frontend
 
@@ -134,8 +139,9 @@ rummiKub-counter/
 │       ├── routers/
 │       │   └── analyze.py          # API-Endpunkte
 │       ├── services/
-│       │   ├── tile_detector.py    # OpenCV Stein-Segmentierung
-│       │   ├── ocr_service.py      # EasyOCR Zahlenerkennung
+│       │   ├── yolo_detector.py    # YOLOv8 Detection + Klassifikation
+│       │   ├── cnn_classifier.py   # CNN Fallback-Klassifikation
+│       │   ├── tile_detector.py    # OpenCV Stein-Segmentierung (Fallback)
 │       │   └── color_detector.py   # HSV Farberkennung
 │       ├── models/
 │       │   └── schemas.py          # Pydantic Datenmodelle
@@ -168,7 +174,7 @@ rummiKub-counter/
 
 - **Frontend:** React 19, Vite 6, Axios
 - **Backend:** Python 3.11, FastAPI, Uvicorn
-- **KI/ML:** EasyOCR (PyTorch, CNN + LSTM), OpenCV
+- **KI/ML:** YOLOv8 (Ultralytics), PyTorch, OpenCV
 - **Deployment:** Docker, Docker Compose, Nginx, Caddy
 
 ## 🌐 VPS-Deployment (Produktion)
