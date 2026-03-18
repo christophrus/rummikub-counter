@@ -26,6 +26,7 @@ services:
       - CORS_ORIGINS=${CORS_ORIGINS:-}
     volumes:
       - easyocr-models:/root/.EasyOCR
+      - /home/lorus/rummikub-uploads:/app/uploads
     restart: unless-stopped
 
   frontend:

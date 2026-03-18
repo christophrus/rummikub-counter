@@ -2,9 +2,12 @@
 API-Router für die Bildanalyse.
 """
 
+import os
 import time
 import logging
 import base64
+from datetime import datetime
+from pathlib import Path
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, Request
 import cv2
@@ -23,6 +26,8 @@ from app.utils.image_processing import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+UPLOAD_DIR = Path(os.environ.get("UPLOAD_DIR", "/app/uploads"))
 
 
 @router.post("/analyze", response_model=AnalysisResult)
@@ -52,6 +57,9 @@ async def analyze_image(request: Request, file: UploadFile = File(...)):
         image = load_image_from_bytes(image_bytes)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Bild konnte nicht geladen werden: {e}")
+
+    # Bild persistent speichern
+    _save_upload(image_bytes, file.filename)
 
     detection_mode = getattr(request.app.state, "detection_mode", "cnn")
 
@@ -180,3 +188,16 @@ async def analyze_image_debug(request: Request, file: UploadFile = File(...)):
         "tile_count": len(tile_regions),
         "results": results,
     }
+
+
+def _save_upload(image_bytes: bytes, filename: str | None) -> None:
+    """Speichert das hochgeladene Bild im Upload-Verzeichnis."""
+    try:
+        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        ext = Path(filename).suffix if filename else ".jpg"
+        dest = UPLOAD_DIR / f"{timestamp}{ext}"
+        dest.write_bytes(image_bytes)
+        logger.info(f"Upload gespeichert: {dest}")
+    except Exception as e:
+        logger.warning(f"Upload konnte nicht gespeichert werden: {e}")
