@@ -8,6 +8,8 @@ Nutzt **YOLOv8** für Erkennung und Klassifikation der Steine in einem einzigen 
 ![Tech Stack](https://img.shields.io/badge/YOLOv8-Object%20Detection-orange)
 ![Tech Stack](https://img.shields.io/badge/Docker-Ready-blue)
 
+![Screenshot](screenshot.png)
+
 ## 🏗️ Architektur
 
 ```
