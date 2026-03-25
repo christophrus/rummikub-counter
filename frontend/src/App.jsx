@@ -83,7 +83,7 @@ function App() {
       </main>
 
       <footer className="app-footer">
-        <p>Powered by EasyOCR (Deep Learning) • OpenCV • FastAPI • React</p>
+        <p>Powered by YOLOv8 • PyTorch CNN • OpenCV • FastAPI • React + Vite</p>
       </footer>
     </div>
   );
