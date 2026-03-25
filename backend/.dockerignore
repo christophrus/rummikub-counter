@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.env
+.venv/
+venv/
+*.egg
+.mypy_cache/
+
+# Training data (not needed at runtime)
+dataset/
+yolo_dataset/
+runs/

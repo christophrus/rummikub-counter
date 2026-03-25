@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Raw Datasets
+backend/dataset/raw/
+backend/dataset/raw2/
+backend/dataset/raw3/
+backend/dataset/raw4/
+backend/dataset/raw5/
+backend/dataset/runs/
+backend/dataset/debug_tiles/
+backend/dataset/tiles/
+backend/dataset/test/
+backend/dataset/train/
+backend/dataset/tiles_augmented/
+
+backend/yolo_dataset/test/
+backend/yolo_dataset/train/
+backend/yolo_dataset/val/
+
+
+# Build
+dist/
+build/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# EasyOCR Models (werden beim Docker-Build geladen)
