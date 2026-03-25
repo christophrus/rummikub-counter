@@ -7,6 +7,22 @@ function ResultDisplay({ result, uploadedImage, onReset }) {
   const recognizedTiles = tiles.filter((t) => t.number !== null || t.is_joker);
   const unrecognizedTiles = tiles.filter((t) => t.number === null && !t.is_joker);
 
+  // Group recognized tiles by class (number or joker)
+  const groupedTiles = recognizedTiles.reduce((groups, tile) => {
+    const key = tile.is_joker ? 'joker' : String(tile.number);
+    if (!groups[key]) {
+      groups[key] = { ...tile, count: 1 };
+    } else {
+      groups[key].count += 1;
+    }
+    return groups;
+  }, {});
+  const groupedTileList = Object.values(groupedTiles).sort((a, b) => {
+    if (a.is_joker) return 1;
+    if (b.is_joker) return -1;
+    return a.number - b.number;
+  });
+
   return (
     <div className="result-section">
       {/* Score-Anzeige */}
@@ -36,7 +52,7 @@ function ResultDisplay({ result, uploadedImage, onReset }) {
         <div className="tiles-section">
           <h2>Erkannte Steine</h2>
           <div className="tiles-grid">
-            {recognizedTiles.map((tile, index) => (
+            {groupedTileList.map((tile, index) => (
               <TileCard key={index} tile={tile} />
             ))}
           </div>
