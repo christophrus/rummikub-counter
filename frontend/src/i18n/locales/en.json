@@ -32,5 +32,14 @@
   "tile": {
     "joker": "Joker",
     "points": "pts"
+  },
+  "seo": {
+    "heading": "Count Rummikub Points with AI",
+    "text": "Take a photo of your Rummikub tiles and instantly get the total score – automatically calculated by artificial intelligence. Our app reliably recognizes all game tiles (1–13 and Joker) using image recognition and saves you the tedious task of adding up points at the game table. Simply upload a photo and you're done.",
+    "howTitle": "How it works",
+    "step1": "📷 Take a photo – lay the tiles flat on the table and photograph from above",
+    "step2": "⬆️ Upload image – via drag & drop or click",
+    "step3": "🧠 AI recognition – YOLOv8 detects and classifies each tile in a fraction of a second",
+    "step4": "✅ Result – total score and recognized tiles at a glance"
   }
 }

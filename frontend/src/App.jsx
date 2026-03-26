@@ -82,6 +82,18 @@ function App() {
         )}
       </main>
 
+      <section className="seo-section">
+        <h2>{t('seo.heading')}</h2>
+        <p>{t('seo.text')}</p>
+        <h3>{t('seo.howTitle')}</h3>
+        <ol className="seo-steps">
+          <li>{t('seo.step1')}</li>
+          <li>{t('seo.step2')}</li>
+          <li>{t('seo.step3')}</li>
+          <li>{t('seo.step4')}</li>
+        </ol>
+      </section>
+
       <footer className="app-footer">
         <p>{t('app.footer')}</p>
       </footer>

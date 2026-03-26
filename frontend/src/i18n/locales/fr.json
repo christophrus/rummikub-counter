@@ -32,5 +32,14 @@
   "tile": {
     "joker": "Joker",
     "points": "pts"
+  },
+  "seo": {
+    "heading": "Comptez vos points Rummikub avec l'IA",
+    "text": "Prenez une photo de vos tuiles Rummikub et obtenez instantanément le score total – calculé automatiquement par l'intelligence artificielle. Notre application reconnaît de manière fiable toutes les tuiles de jeu (1–13 et Joker) grâce à la reconnaissance d'images et vous évite le fastidieux calcul des points à la table de jeu. Il suffit de télécharger une photo, c'est tout.",
+    "howTitle": "Comment ça marche",
+    "step1": "📷 Prenez une photo – posez les tuiles à plat sur la table et photographiez d'en haut",
+    "step2": "⬆️ Téléchargez l'image – par glisser-déposer ou clic",
+    "step3": "🧠 Reconnaissance IA – YOLOv8 détecte et classifie chaque tuile en une fraction de seconde",
+    "step4": "✅ Résultat – score total et tuiles reconnues en un coup d'œil"
   }
 }

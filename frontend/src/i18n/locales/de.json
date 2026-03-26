@@ -32,5 +32,14 @@
   "tile": {
     "joker": "Joker",
     "points": "Pkt"
+  },
+  "seo": {
+    "heading": "Rummikub Punkte zählen mit KI",
+    "text": "Fotografiere deine Rummikub-Steine und erhalte sofort die Gesamtpunktzahl – automatisch berechnet durch künstliche Intelligenz. Unsere App erkennt alle Spielsteine (1–13 sowie Joker) zuverlässig per Bilderkennung und spart dir das mühsame Zusammenrechnen am Spieltisch. Einfach Foto hochladen, fertig.",
+    "howTitle": "So funktioniert's",
+    "step1": "📷 Foto aufnehmen – Steine flach auf den Tisch legen und von oben fotografieren",
+    "step2": "⬆️ Bild hochladen – per Drag & Drop oder Klick",
+    "step3": "🧠 KI-Erkennung – YOLOv8 erkennt und klassifiziert jeden Stein in Sekundenbruchteilen",
+    "step4": "✅ Ergebnis – Gesamtpunktzahl und erkannte Steine auf einen Blick"
   }
 }
