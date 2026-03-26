@@ -9,6 +9,7 @@
   text-align: center;
   padding: 2rem 1rem;
   background: linear-gradient(180deg, rgba(15, 52, 96, 0.8), transparent);
+  position: relative;
 }
 
 .logo {

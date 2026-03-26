@@ -1,0 +1,36 @@
+{
+  "app": {
+    "title": "Rummikub Reconnaissance de Tuiles",
+    "subtitle": "Téléchargez une photo de vos tuiles Rummikub et laissez l'IA compter les points",
+    "footer": "Propulsé par YOLOv8 • PyTorch CNN • OpenCV • FastAPI • React + Vite"
+  },
+  "upload": {
+    "dropText": "<strong>Glissez une image ici</strong> ou cliquez pour sélectionner",
+    "dropHint": "JPG, PNG, WebP • Max. 10 Mo",
+    "preview": "Aperçu",
+    "previewHint": "Cliquez ou glissez une nouvelle image ici",
+    "invalidFile": "Veuillez sélectionner un fichier image.",
+    "analysisError": "Erreur lors de l'analyse."
+  },
+  "loading": {
+    "text": "L'IA analyse votre image...",
+    "detail": "🧠 Le modèle Deep Learning (CNN + LSTM) reconnaît les tuiles"
+  },
+  "error": {
+    "generic": "Une erreur s'est produite."
+  },
+  "result": {
+    "totalScore": "Score total",
+    "tilesDetected": "Tuiles détectées",
+    "numbersRead": "Numéros lus",
+    "processingTime": "Temps de traitement",
+    "recognizedTiles": "Tuiles reconnues",
+    "unrecognizedTiles": "Tuiles non reconnues",
+    "unrecognizedHint": "Ces tuiles ont été trouvées, mais le numéro n'a pas pu être lu.",
+    "resetButton": "🔄 Analyser une nouvelle image"
+  },
+  "tile": {
+    "joker": "Joker",
+    "points": "pts"
+  }
+}

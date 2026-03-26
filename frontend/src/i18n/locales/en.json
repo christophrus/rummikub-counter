@@ -1,0 +1,36 @@
+{
+  "app": {
+    "title": "Rummikub Tile Recognition",
+    "subtitle": "Upload a photo of your Rummikub tiles and let the AI count the points",
+    "footer": "Powered by YOLOv8 • PyTorch CNN • OpenCV • FastAPI • React + Vite"
+  },
+  "upload": {
+    "dropText": "<strong>Drag image here</strong> or click to select",
+    "dropHint": "JPG, PNG, WebP • Max. 10 MB",
+    "preview": "Preview",
+    "previewHint": "Click or drag a new image here",
+    "invalidFile": "Please select an image file.",
+    "analysisError": "Error during analysis."
+  },
+  "loading": {
+    "text": "AI is analyzing your image...",
+    "detail": "🧠 Deep Learning model (CNN + LSTM) recognizes the tiles"
+  },
+  "error": {
+    "generic": "An error occurred."
+  },
+  "result": {
+    "totalScore": "Total Score",
+    "tilesDetected": "Tiles detected",
+    "numbersRead": "Numbers read",
+    "processingTime": "Processing time",
+    "recognizedTiles": "Recognized Tiles",
+    "unrecognizedTiles": "Unrecognized Tiles",
+    "unrecognizedHint": "These tiles were found, but the number could not be read.",
+    "resetButton": "🔄 Analyze new image"
+  },
+  "tile": {
+    "joker": "Joker",
+    "points": "pts"
+  }
+}

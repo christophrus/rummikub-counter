@@ -1,7 +1,9 @@
+import { useTranslation } from 'react-i18next';
 import TileCard from './TileCard';
 import './ResultDisplay.css';
 
 function ResultDisplay({ result, uploadedImage, onReset }) {
+  const { t } = useTranslation();
   const { tiles, total_score, tile_count, processing_time_ms } = result;
 
   const recognizedTiles = tiles.filter((t) => t.number !== null || t.is_joker);
@@ -28,21 +30,21 @@ function ResultDisplay({ result, uploadedImage, onReset }) {
       {/* Score-Anzeige */}
       <div className="score-card">
         <div className="score-main">
-          <span className="score-label">Gesamtpunktzahl</span>
+          <span className="score-label">{t('result.totalScore')}</span>
           <span className="score-value">{total_score}</span>
         </div>
         <div className="score-details">
           <div className="score-detail">
             <span className="detail-value">{tile_count}</span>
-            <span className="detail-label">Steine erkannt</span>
+            <span className="detail-label">{t('result.tilesDetected')}</span>
           </div>
           <div className="score-detail">
             <span className="detail-value">{recognizedTiles.length}</span>
-            <span className="detail-label">Zahlen gelesen</span>
+            <span className="detail-label">{t('result.numbersRead')}</span>
           </div>
           <div className="score-detail">
             <span className="detail-value">{(processing_time_ms / 1000).toFixed(1)}s</span>
-            <span className="detail-label">Verarbeitungszeit</span>
+            <span className="detail-label">{t('result.processingTime')}</span>
           </div>
         </div>
       </div>
@@ -50,7 +52,7 @@ function ResultDisplay({ result, uploadedImage, onReset }) {
       {/* Erkannte Steine */}
       {recognizedTiles.length > 0 && (
         <div className="tiles-section">
-          <h2>Erkannte Steine</h2>
+          <h2>{t('result.recognizedTiles')}</h2>
           <div className="tiles-grid">
             {groupedTileList.map((tile, index) => (
               <TileCard key={index} tile={tile} />
@@ -63,11 +65,9 @@ function ResultDisplay({ result, uploadedImage, onReset }) {
       {unrecognizedTiles.length > 0 && (
         <div className="tiles-section">
           <h2 className="section-warning">
-            ⚠️ Nicht erkannte Steine ({unrecognizedTiles.length})
+            ⚠️ {t('result.unrecognizedTiles')} ({unrecognizedTiles.length})
           </h2>
-          <p className="section-hint">
-            Diese Steine wurden gefunden, aber die Zahl konnte nicht gelesen werden.
-          </p>
+          <p className="section-hint">{t('result.unrecognizedHint')}</p>
           <div className="tiles-grid">
             {unrecognizedTiles.map((tile, index) => (
               <TileCard key={`unknown-${index}`} tile={tile} />
@@ -79,7 +79,7 @@ function ResultDisplay({ result, uploadedImage, onReset }) {
       {/* Reset-Button */}
       <div className="reset-section">
         <button className="reset-button" onClick={onReset}>
-          🔄 Neues Bild analysieren
+          {t('result.resetButton')}
         </button>
       </div>
     </div>

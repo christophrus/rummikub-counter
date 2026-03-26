@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { analyzeImage } from '../services/api';
 import './ImageUpload.css';
 
@@ -6,10 +7,11 @@ function ImageUpload({ onAnalysisStart, onAnalysisComplete, onAnalysisError, onI
   const fileInputRef = useRef(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [preview, setPreview] = useState(null);
+  const { t } = useTranslation();
 
   const handleFile = async (file) => {
     if (!file || !file.type.startsWith('image/')) {
-      onAnalysisError({ message: 'Bitte wähle eine Bilddatei aus.' });
+      onAnalysisError({ message: t('upload.invalidFile') });
       return;
     }
 
@@ -28,7 +30,7 @@ function ImageUpload({ onAnalysisStart, onAnalysisComplete, onAnalysisError, onI
       const message =
         err.response?.data?.detail ||
         err.message ||
-        'Fehler bei der Analyse.';
+        t('upload.analysisError');
       onAnalysisError({ message });
     }
   };
@@ -69,16 +71,14 @@ function ImageUpload({ onAnalysisStart, onAnalysisComplete, onAnalysisError, onI
       >
         {preview ? (
           <div className="preview-container">
-            <img src={preview} alt="Vorschau" className="preview-image" />
-            {!isLoading && <p className="preview-hint">Klicke oder ziehe ein neues Bild hierher</p>}
+            <img src={preview} alt={t('upload.preview')} className="preview-image" />
+            {!isLoading && <p className="preview-hint">{t('upload.previewHint')}</p>}
           </div>
         ) : (
           <div className="drop-content">
             <div className="drop-icon">📷</div>
-            <p className="drop-text">
-              <strong>Bild hierher ziehen</strong> oder klicken zum Auswählen
-            </p>
-            <p className="drop-hint">JPG, PNG, WebP • Max. 10 MB</p>
+            <p className="drop-text" dangerouslySetInnerHTML={{ __html: t('upload.dropText') }} />
+            <p className="drop-hint">{t('upload.dropHint')}</p>
           </div>
         )}
       </div>

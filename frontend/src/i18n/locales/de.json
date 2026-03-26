@@ -1,0 +1,36 @@
+{
+  "app": {
+    "title": "Rummikub Stein-Erkennung",
+    "subtitle": "Lade ein Foto deiner Rummikub-Steine hoch und lass die KI die Punkte zählen",
+    "footer": "Powered by YOLOv8 • PyTorch CNN • OpenCV • FastAPI • React + Vite"
+  },
+  "upload": {
+    "dropText": "<strong>Bild hierher ziehen</strong> oder klicken zum Auswählen",
+    "dropHint": "JPG, PNG, WebP • Max. 10 MB",
+    "preview": "Vorschau",
+    "previewHint": "Klicke oder ziehe ein neues Bild hierher",
+    "invalidFile": "Bitte wähle eine Bilddatei aus.",
+    "analysisError": "Fehler bei der Analyse."
+  },
+  "loading": {
+    "text": "KI analysiert dein Bild...",
+    "detail": "🧠 Deep Learning Modell (CNN + LSTM) erkennt die Steine"
+  },
+  "error": {
+    "generic": "Ein Fehler ist aufgetreten."
+  },
+  "result": {
+    "totalScore": "Gesamtpunktzahl",
+    "tilesDetected": "Steine erkannt",
+    "numbersRead": "Zahlen gelesen",
+    "processingTime": "Verarbeitungszeit",
+    "recognizedTiles": "Erkannte Steine",
+    "unrecognizedTiles": "Nicht erkannte Steine",
+    "unrecognizedHint": "Diese Steine wurden gefunden, aber die Zahl konnte nicht gelesen werden.",
+    "resetButton": "🔄 Neues Bild analysieren"
+  },
+  "tile": {
+    "joker": "Joker",
+    "points": "Pkt"
+  }
+}

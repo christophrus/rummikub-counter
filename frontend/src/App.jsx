@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import ImageUpload from './components/ImageUpload';
 import ResultDisplay from './components/ResultDisplay';
+import LanguageSwitcher from './components/LanguageSwitcher';
 import './App.css';
 
 function App() {
@@ -8,6 +10,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [uploadedImage, setUploadedImage] = useState(null);
+  const { t } = useTranslation();
 
   const handleAnalysisStart = () => {
     setIsLoading(true);
@@ -39,11 +42,10 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
+        <LanguageSwitcher />
         <div className="logo">🎲</div>
-        <h1>Rummikub Stein-Erkennung</h1>
-        <p className="subtitle">
-          Lade ein Foto deiner Rummikub-Steine hoch und lass die KI die Punkte zählen
-        </p>
+        <h1>{t('app.title')}</h1>
+        <p className="subtitle">{t('app.subtitle')}</p>
       </header>
 
       <main className="app-main">
@@ -58,7 +60,7 @@ function App() {
         {error && (
           <div className="error-banner">
             <span className="error-icon">⚠️</span>
-            <span>{error}</span>
+            <span>{error || t('error.generic')}</span>
             <button onClick={() => setError(null)} className="error-close">✕</button>
           </div>
         )}
@@ -66,10 +68,8 @@ function App() {
         {isLoading && (
           <div className="loading-section">
             <div className="spinner" />
-            <p>KI analysiert dein Bild...</p>
-            <p className="loading-detail">
-              🧠 Deep Learning Modell (CNN + LSTM) erkennt die Steine
-            </p>
+            <p>{t('loading.text')}</p>
+            <p className="loading-detail">{t('loading.detail')}</p>
           </div>
         )}
 
@@ -83,7 +83,7 @@ function App() {
       </main>
 
       <footer className="app-footer">
-        <p>Powered by YOLOv8 • PyTorch CNN • OpenCV • FastAPI • React + Vite</p>
+        <p>{t('app.footer')}</p>
       </footer>
     </div>
   );
