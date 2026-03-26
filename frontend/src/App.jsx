@@ -96,6 +96,11 @@ function App() {
 
       <footer className="app-footer">
         <p>{t('app.footer')}</p>
+        <p>
+          <a href="https://github.com/ChristophRus/rummikub-counter" target="_blank" rel="noopener noreferrer" className="footer-link">
+            GitHub
+          </a>
+        </p>
       </footer>
     </div>
   );

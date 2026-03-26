@@ -132,3 +132,13 @@
   font-size: 0.8rem;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
+
+.footer-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.footer-link:hover {
+  color: var(--accent);
+}
