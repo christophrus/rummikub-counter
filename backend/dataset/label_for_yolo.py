@@ -16,6 +16,7 @@ Steuerung:
     1-9                 → Klasse der ausgewählten Box auf 1-9 setzen
     F1=10, F2=11, F3=12, F4=13
     j                   → Klasse auf Joker setzen
+    r                   → Bild um 90° drehen (im Uhrzeigersinn)
     x / Entf            → Ausgewählte Box löschen (Linksklick auf Box zum Auswählen)
     Strg+Z              → Letztes Löschen rückgängig machen
     c                   → Alle Boxen löschen
@@ -58,6 +59,52 @@ COLORS = [
 ]
 
 
+def _boxes_display_to_image(boxes: list, scale: float) -> list:
+    """Skaliert Box-Koordinaten von der Anzeigegröße zurück auf die Bildgröße."""
+    if scale <= 0:
+        return boxes
+    inv = 1.0 / scale
+    return [
+        (int(x1 * inv), int(y1 * inv), int(x2 * inv), int(y2 * inv), cls)
+        for (x1, y1, x2, y2, cls) in boxes
+    ]
+
+
+def _boxes_image_to_display(boxes: list, scale: float) -> list:
+    """Skaliert Box-Koordinaten von der Bildgröße auf die Anzeigegröße."""
+    return [
+        (int(x1 * scale), int(y1 * scale), int(x2 * scale), int(y2 * scale), cls)
+        for (x1, y1, x2, y2, cls) in boxes
+    ]
+
+
+def _rotate_boxes_90_cw(boxes: list, img_w: int, img_h: int) -> list:
+    """Dreht alle Boxen um 90° im Uhrzeigersinn (in Bildkoordinaten)."""
+    rotated = []
+    if not boxes:
+        return rotated
+
+    for (x1, y1, x2, y2, cls) in boxes:
+        # Vier Ecken des Rechtecks
+        corners = [
+            (x1, y1),
+            (x2, y1),
+            (x2, y2),
+            (x1, y2),
+        ]
+        # Mapping für 90° CW: (x, y) -> (h - 1 - y, x)
+        transformed = [
+            (img_h - 1 - y, x) for (x, y) in corners
+        ]
+        xs = [p[0] for p in transformed]
+        ys = [p[1] for p in transformed]
+        nx1, nx2 = int(min(xs)), int(max(xs))
+        ny1, ny2 = int(min(ys)), int(max(ys))
+        rotated.append((nx1, ny1, nx2, ny2, cls))
+
+    return rotated
+
+
 def _load_image_exif(path: Path) -> np.ndarray | None:
     """Lädt ein Bild mit korrekter EXIF-Orientierung."""
     try:
@@ -84,6 +131,7 @@ class BBoxAnnotator:
         self.start_y = 0
         self.current_class = 0
         self.undo_stack = []     # Stack für Rückgängig-Funktion
+        self.box_confidences = {}  # (x1,y1,x2,y2,cls) → confidence
 
     def _find_handle(self, x, y):
         """Prüft ob (x,y) auf einem Eck-Anfasser liegt. Gibt (box_idx, corner) oder None zurück."""
@@ -168,6 +216,15 @@ class BBoxAnnotator:
             label = CLASS_NAMES.get(cls, "?")
             cv2.putText(self.display, label, (x1, y1 - 5),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+            conf = self.box_confidences.get((x1, y1, x2, y2, cls))
+            if conf is not None:
+                conf_text = f"{conf:.0%}"
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                font_scale = 0.4
+                (tw, th), _ = cv2.getTextSize(conf_text, font, font_scale, 1)
+                tx = x1 + (x2 - x1 - tw) // 2
+                ty = y1 + (y2 - y1 + th) // 2
+                cv2.putText(self.display, conf_text, (tx, ty), font, font_scale, color, 1)
             # Eck-Anfasser zeichnen
             for (cx, cy) in [(x1, y1), (x2, y1), (x2, y2), (x1, y2)]:
                 cv2.circle(self.display, (cx, cy), r, color, -1)
@@ -236,14 +293,15 @@ def _remove_overlapping(boxes: list, iou_threshold: float = 0.3) -> list:
 
 
 def auto_detect_yolo(image: np.ndarray) -> list:
-    """Nutzt YOLO für automatische Vorschläge."""
+    """Nutzt YOLO für automatische Vorschläge. Gibt (x1,y1,x2,y2,cls,conf) zurück."""
     results = _yolo_model(image, conf=0.15, verbose=False)
     boxes = []
     for result in results:
         for box in result.boxes:
             x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
             cls_idx = int(box.cls[0])
-            boxes.append((int(x1), int(y1), int(x2), int(y2), cls_idx))
+            conf = float(box.conf[0])
+            boxes.append((int(x1), int(y1), int(x2), int(y2), cls_idx, conf))
     return _remove_overlapping(boxes)
 
 
@@ -282,7 +340,8 @@ def auto_detect(image: np.ndarray) -> list:
         else:
             cls_idx = 0
 
-        boxes.append((ox1, oy1, ox2, oy2, cls_idx))
+        conf = result.get("confidence", 0.0)
+        boxes.append((ox1, oy1, ox2, oy2, cls_idx, conf))
 
     return _remove_overlapping(boxes)
 
@@ -395,6 +454,7 @@ def main():
 
         # Display-Größe an Bildschirm anpassen
         screen_w, screen_h = 1600, 900  # Sichere Maximalwerte (mit Platz für Taskbar)
+
         h, w = original.shape[:2]
         display_scale = min(screen_w / w, screen_h / h, 1.0)
         if display_scale < 1.0:
@@ -439,14 +499,50 @@ def main():
 
             elif key == ord('a'):
                 print("  Auto-Detecting...")
-                boxes = auto_detect(original)
-                # Skalierung auf Display-Größe
-                annotator.boxes = [
-                    (int(x1*display_scale), int(y1*display_scale), int(x2*display_scale), int(y2*display_scale), c)
-                    for (x1, y1, x2, y2, c) in boxes
-                ]
+                detections = auto_detect(original)
+                # Skalierung auf Display-Größe + Confidence speichern
+                annotator.boxes = []
+                annotator.box_confidences = {}
+                for det in detections:
+                    x1, y1, x2, y2, c = det[:5]
+                    conf = det[5] if len(det) > 5 else None
+                    sx1 = int(x1 * display_scale)
+                    sy1 = int(y1 * display_scale)
+                    sx2 = int(x2 * display_scale)
+                    sy2 = int(y2 * display_scale)
+                    annotator.boxes.append((sx1, sy1, sx2, sy2, c))
+                    if conf is not None:
+                        annotator.box_confidences[(sx1, sy1, sx2, sy2, c)] = conf
                 annotator._redraw()
                 print(f"  {len(annotator.boxes)} Steine vorgeschlagen.")
+
+            elif key == ord('r'):
+                # Bild und Boxen um 90° im Uhrzeigersinn drehen
+                print("  Bild um 90° drehen (CW)...")
+                # Aktuelle Boxen von Display- in Bildkoordinaten zurückskalieren
+                img_h, img_w = original.shape[:2]
+                img_boxes = _boxes_display_to_image(annotator.boxes, display_scale)
+
+                # Bild drehen
+                original = cv2.rotate(original, cv2.ROTATE_90_CLOCKWISE)
+
+                # Boxen in Bildkoordinaten drehen (unter Verwendung der alten Dimensionen)
+                rotated_img_boxes = _rotate_boxes_90_cw(img_boxes, img_w, img_h)
+
+                # Neue Anzeigegröße berechnen
+                h, w = original.shape[:2]
+                display_scale = min(screen_w / w, screen_h / h, 1.0)
+                if display_scale < 1.0:
+                    display_img = cv2.resize(original, (int(w * display_scale), int(h * display_scale)))
+                else:
+                    display_img = original.copy()
+
+                # Boxen wieder auf Anzeigegröße skalieren
+                annotator.boxes = _boxes_image_to_display(rotated_img_boxes, display_scale)
+                annotator.image = display_img.copy()
+                annotator.undo_stack.clear()  # Historie zurücksetzen, da Koordinaten geändert wurden
+                cv2.resizeWindow(window_name, display_img.shape[1], display_img.shape[0])
+                annotator._redraw()
 
             elif key in (ord('s'), 13):  # s oder Enter
                 if annotator.boxes:
