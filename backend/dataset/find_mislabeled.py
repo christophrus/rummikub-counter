@@ -141,36 +141,42 @@ def scan_cnn_splits(model, idx_to_class, class_to_idx, transform, device, splits
         total = 0
         flagged = 0
 
+        # Alle Bilder vorab zählen für Fortschrittsanzeige
+        all_images = []
         for class_dir in class_dirs:
+            if class_dir.name not in class_to_idx:
+                continue
+            imgs = list(class_dir.glob("*.png")) + list(class_dir.glob("*.jpg")) + list(class_dir.glob("*.jpeg"))
+            all_images.extend((class_dir, img) for img in imgs)
+        total_images = len(all_images)
+
+        for i, (class_dir, img_path) in enumerate(all_images):
             folder_label = class_dir.name
-            if folder_label not in class_to_idx:
+            true_idx = class_to_idx[folder_label]
+
+            img = cv2.imread(str(img_path))
+            if img is None:
                 continue
 
-            true_idx = class_to_idx[folder_label]
-            images = list(class_dir.glob("*.png")) + list(class_dir.glob("*.jpg")) + list(class_dir.glob("*.jpeg"))
+            total += 1
+            pred_idx, conf, probs = predict_image(model, img, transform, device)
 
-            for img_path in images:
-                img = cv2.imread(str(img_path))
-                if img is None:
-                    continue
+            if pred_idx != true_idx and conf >= threshold:
+                pred_label = idx_to_class.get(pred_idx, "?")
+                suspects.append({
+                    "path": img_path,
+                    "split": split,
+                    "folder_label": folder_label,
+                    "pred_label": pred_label,
+                    "pred_idx": pred_idx,
+                    "confidence": conf,
+                    "probs": probs,
+                })
+                flagged += 1
 
-                total += 1
-                pred_idx, conf, probs = predict_image(model, img, transform, device)
+            print(f"\r  {split}: {i+1}/{total_images} Bilder ({flagged} verdächtig)", end="", flush=True)
 
-                if pred_idx != true_idx and conf >= threshold:
-                    pred_label = idx_to_class.get(pred_idx, "?")
-                    suspects.append({
-                        "path": img_path,
-                        "split": split,
-                        "folder_label": folder_label,
-                        "pred_label": pred_label,
-                        "pred_idx": pred_idx,
-                        "confidence": conf,
-                        "probs": probs,
-                    })
-                    flagged += 1
-
-        print(f"  {split}: {total} Bilder geprüft, {flagged} verdächtig")
+        print(f"\r  {split}: {total} Bilder geprüft, {flagged} verdächtig{' ' * 20}")
 
     # Nach Konfidenz sortieren (höchste zuerst = wahrscheinlichste Fehler)
     suspects.sort(key=lambda x: x["confidence"], reverse=True)
@@ -326,8 +332,9 @@ def scan_yolo_splits(splits, threshold):
         images = sorted(img_dir.glob("*.jpg")) + sorted(img_dir.glob("*.png"))
         total = 0
         flagged = 0
+        total_images = len(images)
 
-        for img_path in images:
+        for i, img_path in enumerate(images):
             total += 1
             label_path = lbl_dir / (img_path.stem + ".txt")
 
@@ -385,7 +392,9 @@ def scan_yolo_splits(splits, threshold):
                 })
                 flagged += 1
 
-        print(f"  {split}: {total} Bilder geprüft, {flagged} mit Label-Widersprüchen")
+            print(f"\r  {split}: {i+1}/{total_images} Bilder ({flagged} Widersprüche)", end="", flush=True)
+
+        print(f"\r  {split}: {total} Bilder geprüft, {flagged} mit Label-Widersprüchen{' ' * 20}")
 
     suspects.sort(key=lambda x: x["max_conf"], reverse=True)
     return suspects
