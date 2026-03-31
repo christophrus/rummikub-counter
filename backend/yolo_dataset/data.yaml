@@ -1,5 +1,5 @@
 # Rummikub YOLO Dataset
-# Konfiguration für YOLOv8 Training
+# Konfiguration für YOLO26 Training
 
 path: D:/Github/rummiKub-counter/backend/yolo_dataset
 train: train/images

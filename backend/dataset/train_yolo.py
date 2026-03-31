@@ -1,9 +1,9 @@
 """
-YOLOv8 Training: Trainiert ein Object-Detection-Modell für Rummikub.
+YOLO26 Training: Trainiert ein Object-Detection-Modell für Rummikub.
 
 Nutzung:
     python train_yolo.py
-    python train_yolo.py --epochs 100 --model yolov8n.pt --imgsz 640
+    python train_yolo.py --epochs 100 --model yolo26n.pt --imgsz 640
 
 Das Modell erkennt und lokalisiert Rummikub-Steine in einem Schritt.
 Ergebnisse werden unter runs/detect/rummikub/ gespeichert.
@@ -49,16 +49,16 @@ def check_dataset():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Rummikub YOLOv8 Training")
+    parser = argparse.ArgumentParser(description="Rummikub YOLO26 Training")
     parser.add_argument("--epochs", type=int, default=200, help="Anzahl Epochen (Standard: 200)")
-    parser.add_argument("--model", type=str, default="yolov8n.pt", help="Basis-Modell (Standard: yolov8n.pt)")
+    parser.add_argument("--model", type=str, default="yolo26n.pt", help="Basis-Modell (Standard: yolo26n.pt)")
     parser.add_argument("--imgsz", type=int, default=640, help="Bildgröße (Standard: 640)")
     parser.add_argument("--batch", type=int, default=16, help="Batch Size (Standard: 16)")
     parser.add_argument("--device", type=str, default=None, help="Device: 0 für GPU, cpu für CPU")
     args = parser.parse_args()
 
     print("=" * 60)
-    print("  Rummikub YOLOv8 Training")
+    print("  Rummikub YOLO26 Training")
     print("=" * 60)
 
     if not DATA_YAML.exists():

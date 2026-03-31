@@ -628,7 +628,7 @@ def main():
 
                         device = "0" if torch.cuda.is_available() else "cpu"
                         # Vom vorherigen Modell weitertrainieren wenn vorhanden
-                        base_model = str(YOLO_MODEL) if YOLO_MODEL.exists() else "yolov8n.pt"
+                        base_model = str(YOLO_MODEL) if YOLO_MODEL.exists() else "yolo26n.pt"
                         yolo = UltralyticsYOLO(base_model)
                         val_imgs = list((YOLO_DIR / "val" / "images").glob("*"))
                         has_val = len(val_imgs) > 0

@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI):
         logger.info("⚠️ Kein Orientierungsmodell – Bilder werden als aufrecht angenommen.")
 
     if YOLO_MODEL_PATH.exists():
-        logger.info("📦 Lade YOLOv8-Modell (Detection + Klassifikation)...")
+        logger.info("📦 Lade YOLO26-Modell (Detection + Klassifikation)...")
         load_yolo_model()
         app.state.detection_mode = "yolo"
         logger.info("✅ YOLO-Modell geladen. Backend bereit!")
@@ -56,7 +56,7 @@ app = FastAPI(
     title="Rummikub Stein-Erkennung",
     description=(
         "API zur Erkennung von Rummikub-Steinen in Bildern. "
-        "Nutzt YOLOv8 oder CNN+OpenCV für Erkennung und Klassifikation."
+        "Nutzt YOLO26 oder CNN+OpenCV für Erkennung und Klassifikation."
     ),
     version="1.0.0",
     lifespan=lifespan,

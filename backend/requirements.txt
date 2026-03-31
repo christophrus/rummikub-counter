@@ -5,4 +5,4 @@ opencv-python-headless==4.10.0.84
 numpy==1.26.4
 Pillow==12.1.1
 pydantic==2.10.4
-ultralytics==8.4.23
+ultralytics>=8.4.30

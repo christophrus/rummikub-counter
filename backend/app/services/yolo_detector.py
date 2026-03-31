@@ -1,8 +1,9 @@
 """
-YOLO-Detector: Erkennt und klassifiziert Rummikub-Steine in einem Schritt.
+YOLO26-Detector: Erkennt und klassifiziert Rummikub-Steine in einem Schritt.
 
 Ersetzt sowohl den OpenCV-Tile-Detector als auch den CNN-Klassifikator.
 Ein einziger Forward Pass findet alle Steine und erkennt ihre Zahlen.
+Nutzt YOLO26 mit NMS-freier End-to-End-Inferenz.
 """
 
 import logging
@@ -22,7 +23,7 @@ _model = None
 
 
 def load_yolo_model() -> None:
-    """Lädt das trainierte YOLOv8-Modell."""
+    """Lädt das trainierte YOLO26-Modell."""
     global _model
 
     if not MODEL_PATH.exists():
@@ -52,7 +53,7 @@ def detect_and_classify(image: np.ndarray, confidence_threshold: float = 0.25) -
     if _model is None:
         raise RuntimeError("YOLO-Modell nicht geladen. Zuerst load_yolo_model() aufrufen.")
 
-    results = _model(image, conf=confidence_threshold, agnostic_nms=True, verbose=False)
+    results = _model(image, conf=confidence_threshold, verbose=False)
 
     detected = []
     for result in results:
