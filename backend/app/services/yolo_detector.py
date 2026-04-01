@@ -35,7 +35,7 @@ def load_yolo_model() -> None:
     logger.info(f"YOLO-Modell geladen: {MODEL_PATH.name}")
 
 
-def detect_and_classify(image: np.ndarray, confidence_threshold: float = 0.25) -> list[dict]:
+def detect_and_classify(image: np.ndarray, confidence_threshold: float = 0.5) -> list[dict]:
     """
     Erkennt alle Rummikub-Steine im Bild und klassifiziert sie.
 
