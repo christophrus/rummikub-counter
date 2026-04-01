@@ -8,6 +8,7 @@ Nutzt **YOLOv8** für Erkennung und Klassifikation der Steine in einem einzigen 
 ![Tech Stack](https://img.shields.io/badge/YOLOv8-Object%20Detection-orange)
 ![Tech Stack](https://img.shields.io/badge/PyTorch-2.x-red)
 ![Tech Stack](https://img.shields.io/badge/Docker-Ready-blue)
+[![Dataset](https://img.shields.io/badge/🤗%20Dataset-Hugging%20Face-yellow)](https://huggingface.co/datasets/christophrus/rummikub/tree/main)
 
 ![Screenshot](screenshot.png)
 
