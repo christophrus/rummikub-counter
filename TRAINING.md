@@ -5,7 +5,7 @@
 Wir trainieren ein eigenes Deep-Learning-Modell zur Erkennung von Rummikub-Steinen in zwei Phasen:
 
 - **Phase 1: Custom CNN Classifier** – Ein eigenes neuronales Netz, das einzelne Stein-Bilder klassifiziert (Zahlen 1-13 + Joker = 14 Klassen)
-- **Phase 2: YOLOv8 Object Detection** – Ein Modell, das Steine im Gesamtbild findet UND klassifiziert (ersetzt OpenCV-Konturfindung + CNN)
+- **Phase 2: YOLO26 Object Detection** – Ein Modell, das Steine im Gesamtbild findet UND klassifiziert (ersetzt OpenCV-Konturfindung + CNN)
 
 ---
 
@@ -133,7 +133,7 @@ Wir trainieren ein eigenes Deep-Learning-Modell zur Erkennung von Rummikub-Stein
 
 ---
 
-## Phase 2: YOLOv8 Object Detection
+## Phase 2: YOLO26 Object Detection
 
 > Erst starten, wenn Phase 1 abgeschlossen ist!
 
@@ -168,7 +168,7 @@ Wir trainieren ein eigenes Deep-Learning-Modell zur Erkennung von Rummikub-Stein
       └── labels/
   ```
 
-### Schritt 8: YOLOv8 trainieren
+### Schritt 8: YOLO26 trainieren
 
 > **Ziel:** YOLO erkennt Steine und ihre Zahlen in einem Schritt
 
@@ -176,9 +176,9 @@ Wir trainieren ein eigenes Deep-Learning-Modell zur Erkennung von Rummikub-Stein
 - [ ] **8.2** `data.yaml` konfigurieren
 - [ ] **8.3** Training starten:
   ```bash
-  yolo detect train model=yolov8n.pt data=data.yaml epochs=100 imgsz=640
+  yolo detect train model=yolo26n.pt data=data.yaml epochs=200 imgsz=1280
   ```
-  - `yolov8n.pt` = vortrainiertes Nanomodell (Transfer Learning!)
+  - `yolo26n.pt` = vortrainiertes Nanomodell (Transfer Learning!)
   - Das Model lernt von seinen COCO-Weights und passt sich an Rummikub an
 - [ ] **8.4** Trainingsergebnisse auswerten (mAP, Precision, Recall)
 - [ ] **8.5** Bestes Modell speichern (`best.pt`)

@@ -2,7 +2,7 @@
   "app": {
     "title": "Rummikub Reconnaissance de Tuiles",
     "subtitle": "Téléchargez une photo de vos tuiles Rummikub et laissez l'IA compter les points",
-    "footer": "Propulsé par YOLOv8 • PyTorch CNN • OpenCV • FastAPI • React + Vite"
+    "footer": "Propulsé par YOLO26 • PyTorch CNN • OpenCV • FastAPI • React + Vite"
   },
   "upload": {
     "dropText": "<strong>Glissez une image ici</strong> ou cliquez pour sélectionner",
@@ -39,7 +39,7 @@
     "howTitle": "Comment ça marche",
     "step1": "📷 Prenez une photo – posez les tuiles à plat sur la table et photographiez d'en haut",
     "step2": "⬆️ Téléchargez l'image – par glisser-déposer ou clic",
-    "step3": "🧠 Reconnaissance IA – YOLOv8 détecte et classifie chaque tuile en une fraction de seconde",
+    "step3": "🧠 Reconnaissance IA – YOLO26 détecte et classifie chaque tuile en une fraction de seconde",
     "step4": "✅ Résultat – score total et tuiles reconnues en un coup d'œil"
   }
 }

@@ -1,11 +1,11 @@
 # 🎲 Rummikub Stein-Erkennung
 
 Eine Web-App, die Rummikub-Steine auf Fotos erkennt und deren Punktzahl berechnet.
-Nutzt **YOLOv8** für Erkennung und Klassifikation der Steine in einem einzigen Forward Pass, mit automatischer **Orientierungskorrektur** per ResNet-18.
+Nutzt **YOLO26** für Erkennung und Klassifikation der Steine in einem einzigen Forward Pass, mit automatischer **Orientierungskorrektur** per ResNet-18.
 
 ![Tech Stack](https://img.shields.io/badge/React-19-blue)
 ![Tech Stack](https://img.shields.io/badge/FastAPI-0.115-green)
-![Tech Stack](https://img.shields.io/badge/YOLOv8-Object%20Detection-orange)
+![Tech Stack](https://img.shields.io/badge/YOLO26-Object%20Detection-orange)
 ![Tech Stack](https://img.shields.io/badge/PyTorch-2.x-red)
 ![Tech Stack](https://img.shields.io/badge/Docker-Ready-blue)
 [![Dataset](https://img.shields.io/badge/🤗%20Dataset-Hugging%20Face-yellow)](https://huggingface.co/datasets/christophrus/rummikub/tree/main)
@@ -25,7 +25,7 @@ Nutzt **YOLOv8** für Erkennung und Klassifikation der Steine in einem einzigen 
 │   - Punkte       │                   │   └────────┬────────────┘     │
 │                  │                   │            ▼                   │
 └──────────────────┘                   │   ┌─────────────────────┐     │
-                                       │   │ YOLOv8 Nano         │     │
+                                       │   │ YOLO26              │     │
                                        │   │ Detection +         │     │
                                        │   │ Klassifikation      │     │
                                        │   │ (14 Klassen)        │     │
@@ -57,9 +57,9 @@ Bild-Upload → Resize (max 1920px) → Orientierungskorrektur (ResNet-18)
                               Punkte-Berechnung → JSON-Response
 ```
 
-### YOLOv8 Nano (Standard)
+### YOLO26 (Standard)
 
-Ein eigens trainiertes YOLOv8-Nano-Modell (`rummikub_yolo.pt`) erkennt und klassifiziert alle Steine in einem einzigen Forward Pass:
+Ein eigens trainiertes YOLO26-Modell (`rummikub_yolo.pt`) erkennt und klassifiziert alle Steine in einem einzigen Forward Pass:
 
 1. **Detection:** Lokalisiert alle Rummikub-Steine im Bild (Bounding Boxes)
 2. **Klassifikation:** Erkennt gleichzeitig den Wert (1–13) oder Joker — 14 Klassen
@@ -90,7 +90,7 @@ Falls kein YOLO-Modell vorhanden ist, wird automatisch auf eine zweistufige Pipe
 
 | Modell | Architektur | Input | Klassen | Datei |
 |--------|-------------|-------|---------|-------|
-| YOLO Detector | YOLOv8 Nano | 640×640 | 14 (1–13 + Joker) | `models/rummikub_yolo.pt` |
+| YOLO Detector | YOLO26 | 1280×1280 | 14 (1–13 + Joker) | `models/rummikub_yolo.pt` |
 | Orientierung | ResNet-18 | 224×224 | 4 (0°/90°/180°/270°) | `models/orientation_cnn.pth` |
 | CNN Classifier | Custom 4-Layer CNN | 64×96 | 14 (1–13 + Joker) | `models/rummikub_cnn.pth` |
 
@@ -218,7 +218,7 @@ rummikub-counter/
 │   ├── Dockerfile
 │   ├── requirements.txt
 │   ├── models/                     # Trainierte Modelle
-│   │   ├── rummikub_yolo.pt        #   YOLOv8 Nano
+│   │   ├── rummikub_yolo.pt        #   YOLO26
 │   │   ├── rummikub_cnn.pth        #   Custom CNN (Fallback)
 │   │   └── orientation_cnn.pth     #   ResNet-18 Orientierung
 │   ├── app/
@@ -226,7 +226,7 @@ rummikub-counter/
 │   │   ├── routers/
 │   │   │   └── analyze.py          # /api/analyze + /api/analyze-debug
 │   │   ├── services/
-│   │   │   ├── yolo_detector.py    # YOLOv8 Detection + Klassifikation
+│   │   │   ├── yolo_detector.py    # YOLO26 Detection + Klassifikation
 │   │   │   ├── cnn_classifier.py   # CNN Fallback-Klassifikation
 │   │   │   ├── tile_detector.py    # OpenCV Stein-Segmentierung (7 Strategien)
 │   │   │   ├── color_detector.py   # HSV Farberkennung
@@ -237,7 +237,7 @@ rummikub-counter/
 │   │   └── utils/
 │   │       └── image_processing.py # Bildvorverarbeitung + EXIF
 │   └── dataset/                    # Training-Tools
-│       ├── train_yolo.py           # YOLOv8 Training
+│       ├── train_yolo.py           # YOLO26 Training
 │       ├── train_cnn.py            # CNN Training
 │       ├── train_orientation.py    # Orientierungs-CNN Training
 │       ├── augment_dataset.py      # Daten-Augmentierung (CNN)
@@ -287,7 +287,7 @@ Eine ausführliche Trainings-Anleitung mit CNN- und YOLO-Training findet sich in
 | **Backend** | Python | 3.11 |
 | | FastAPI | 0.115.6 |
 | | Uvicorn | 0.34.0 |
-| **KI/ML** | Ultralytics (YOLOv8) | 8.4.23 |
+| **KI/ML** | Ultralytics (YOLO26) | 8.4.23 |
 | | PyTorch | 2.x (CPU) |
 | | OpenCV | 4.10.0 |
 | | Pillow | 12.1.1 |

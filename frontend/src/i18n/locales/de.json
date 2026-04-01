@@ -2,7 +2,7 @@
   "app": {
     "title": "Rummikub Stein-Erkennung",
     "subtitle": "Lade ein Foto deiner Rummikub-Steine hoch und lass die KI die Punkte zählen",
-    "footer": "Powered by YOLOv8 • PyTorch CNN • OpenCV • FastAPI • React + Vite"
+    "footer": "Powered by YOLO26 • PyTorch CNN • OpenCV • FastAPI • React + Vite"
   },
   "upload": {
     "dropText": "<strong>Bild hierher ziehen</strong> oder klicken zum Auswählen",
@@ -39,7 +39,7 @@
     "howTitle": "So funktioniert's",
     "step1": "📷 Foto aufnehmen – Steine flach auf den Tisch legen und von oben fotografieren",
     "step2": "⬆️ Bild hochladen – per Drag & Drop oder Klick",
-    "step3": "🧠 KI-Erkennung – YOLOv8 erkennt und klassifiziert jeden Stein in Sekundenbruchteilen",
+    "step3": "🧠 KI-Erkennung – YOLO26 erkennt und klassifiziert jeden Stein in Sekundenbruchteilen",
     "step4": "✅ Ergebnis – Gesamtpunktzahl und erkannte Steine auf einen Blick"
   }
 }

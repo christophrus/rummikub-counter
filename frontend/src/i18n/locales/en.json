@@ -2,7 +2,7 @@
   "app": {
     "title": "Rummikub Tile Recognition",
     "subtitle": "Upload a photo of your Rummikub tiles and let the AI count the points",
-    "footer": "Powered by YOLOv8 • PyTorch CNN • OpenCV • FastAPI • React + Vite"
+    "footer": "Powered by YOLO26 • PyTorch CNN • OpenCV • FastAPI • React + Vite"
   },
   "upload": {
     "dropText": "<strong>Drag image here</strong> or click to select",
@@ -39,7 +39,7 @@
     "howTitle": "How it works",
     "step1": "📷 Take a photo – lay the tiles flat on the table and photograph from above",
     "step2": "⬆️ Upload image – via drag & drop or click",
-    "step3": "🧠 AI recognition – YOLOv8 detects and classifies each tile in a fraction of a second",
+    "step3": "🧠 AI recognition – YOLO26 detects and classifies each tile in a fraction of a second",
     "step4": "✅ Result – total score and recognized tiles at a glance"
   }
 }
