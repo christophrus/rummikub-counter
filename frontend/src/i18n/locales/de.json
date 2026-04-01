@@ -27,7 +27,10 @@
     "recognizedTiles": "Erkannte Steine",
     "unrecognizedTiles": "Nicht erkannte Steine",
     "unrecognizedHint": "Diese Steine wurden gefunden, aber die Zahl konnte nicht gelesen werden.",
-    "resetButton": "🔄 Neues Bild analysieren"
+    "resetButton": "🔄 Neues Bild analysieren",
+    "debugShow": "🔍 Debug-Bild anzeigen",
+    "debugHide": "🔍 Debug-Bild ausblenden",
+    "debugLoading": "⏳ Debug-Bild wird geladen..."
   },
   "tile": {
     "joker": "Joker",

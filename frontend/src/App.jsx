@@ -10,6 +10,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [uploadedImage, setUploadedImage] = useState(null);
+  const [uploadedFile, setUploadedFile] = useState(null);
   const { t } = useTranslation();
 
   const handleAnalysisStart = () => {
@@ -36,6 +37,7 @@ function App() {
     setResult(null);
     setError(null);
     setUploadedImage(null);
+    setUploadedFile(null);
     setIsLoading(false);
   };
 
@@ -54,6 +56,7 @@ function App() {
           onAnalysisComplete={handleAnalysisComplete}
           onAnalysisError={handleAnalysisError}
           onImageSelected={handleImageSelected}
+          onFileSelected={setUploadedFile}
           isLoading={isLoading}
         />
 
@@ -77,6 +80,7 @@ function App() {
           <ResultDisplay
             result={result}
             uploadedImage={uploadedImage}
+            uploadedFile={uploadedFile}
             onReset={handleReset}
           />
         )}

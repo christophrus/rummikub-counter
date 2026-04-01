@@ -1,10 +1,31 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { analyzeImageDebug } from '../services/api';
 import TileCard from './TileCard';
 import './ResultDisplay.css';
 
-function ResultDisplay({ result, uploadedImage, onReset }) {
+function ResultDisplay({ result, uploadedImage, uploadedFile, onReset }) {
+  const [debugImage, setDebugImage] = useState(null);
+  const [debugLoading, setDebugLoading] = useState(false);
   const { t } = useTranslation();
   const { tiles, total_score, tile_count, processing_time_ms } = result;
+
+  const handleDebug = async () => {
+    if (!uploadedFile) return;
+    if (debugImage) {
+      setDebugImage(null);
+      return;
+    }
+    setDebugLoading(true);
+    try {
+      const data = await analyzeImageDebug(uploadedFile);
+      setDebugImage(data.debug_image);
+    } catch {
+      setDebugImage(null);
+    } finally {
+      setDebugLoading(false);
+    }
+  };
 
   const recognizedTiles = tiles.filter((t) => t.number !== null || t.is_joker);
   const unrecognizedTiles = tiles.filter((t) => t.number === null && !t.is_joker);
@@ -73,6 +94,28 @@ function ResultDisplay({ result, uploadedImage, onReset }) {
               <TileCard key={`unknown-${index}`} tile={tile} />
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Debug-Bild */}
+      {uploadedFile && (
+        <div className="debug-section">
+          <button
+            className={`debug-button ${debugImage ? 'active' : ''}`}
+            onClick={handleDebug}
+            disabled={debugLoading}
+          >
+            {debugLoading
+              ? t('result.debugLoading')
+              : debugImage
+                ? t('result.debugHide')
+                : t('result.debugShow')}
+          </button>
+          {debugImage && (
+            <div className="debug-image-container">
+              <img src={debugImage} alt="Debug" className="debug-image" />
+            </div>
+          )}
         </div>
       )}
 

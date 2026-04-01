@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { analyzeImage } from '../services/api';
 import './ImageUpload.css';
 
-function ImageUpload({ onAnalysisStart, onAnalysisComplete, onAnalysisError, onImageSelected, isLoading }) {
+function ImageUpload({ onAnalysisStart, onAnalysisComplete, onAnalysisError, onImageSelected, onFileSelected, isLoading }) {
   const fileInputRef = useRef(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [preview, setPreview] = useState(null);
@@ -19,6 +19,7 @@ function ImageUpload({ onAnalysisStart, onAnalysisComplete, onAnalysisError, onI
     const imageUrl = URL.createObjectURL(file);
     setPreview(imageUrl);
     onImageSelected(imageUrl);
+    onFileSelected(file);
 
     // Analyse starten
     onAnalysisStart();

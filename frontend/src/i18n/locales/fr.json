@@ -27,7 +27,10 @@
     "recognizedTiles": "Tuiles reconnues",
     "unrecognizedTiles": "Tuiles non reconnues",
     "unrecognizedHint": "Ces tuiles ont été trouvées, mais le numéro n'a pas pu être lu.",
-    "resetButton": "🔄 Analyser une nouvelle image"
+    "resetButton": "🔄 Analyser une nouvelle image",
+    "debugShow": "🔍 Afficher l'image de débogage",
+    "debugHide": "🔍 Masquer l'image de débogage",
+    "debugLoading": "⏳ Chargement de l'image de débogage..."
   },
   "tile": {
     "joker": "Joker",

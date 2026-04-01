@@ -27,7 +27,10 @@
     "recognizedTiles": "Recognized Tiles",
     "unrecognizedTiles": "Unrecognized Tiles",
     "unrecognizedHint": "These tiles were found, but the number could not be read.",
-    "resetButton": "🔄 Analyze new image"
+    "resetButton": "🔄 Analyze new image",
+    "debugShow": "🔍 Show debug image",
+    "debugHide": "🔍 Hide debug image",
+    "debugLoading": "⏳ Loading debug image..."
   },
   "tile": {
     "joker": "Joker",
