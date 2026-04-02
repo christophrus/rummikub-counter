@@ -267,6 +267,74 @@ rummikub-counter/
 - **Abstände** – Steine mit etwas Abstand zueinander legen
 - **Schärfe** – Scharfes Foto, kein Verwackeln
 
+## 📦 Dataset von Hugging Face
+
+Das YOLO-Trainings-Dataset (~5.7 GB) ist auf Hugging Face verfügbar:
+🔗 [christophrus/rummikub](https://huggingface.co/datasets/christophrus/rummikub/tree/main)
+
+### Variante 1: Git LFS (vollständiger Klon)
+
+```bash
+# Git LFS muss installiert sein
+git lfs install
+
+# Dataset klonen
+git clone https://huggingface.co/datasets/christophrus/rummikub backend/yolo_dataset
+```
+
+### Variante 2: Hugging Face CLI
+
+```bash
+# CLI installieren (falls nicht vorhanden)
+pip install huggingface_hub
+
+# Dataset herunterladen
+huggingface-cli download christophrus/rummikub --repo-type dataset --local-dir backend/yolo_dataset
+```
+
+### Variante 3: Python-Script
+
+```python
+from huggingface_hub import snapshot_download
+
+snapshot_download(
+    repo_id="christophrus/rummikub",
+    repo_type="dataset",
+    local_dir="backend/yolo_dataset"
+)
+```
+
+### Nach dem Download
+
+Das Dataset enthält die YOLO-Ordnerstruktur mit Bildern und Labels:
+
+```
+backend/yolo_dataset/
+├── data.yaml           # YOLO-Konfiguration
+├── data_quick.yaml     # Schnelltest-Konfiguration
+├── train/
+│   ├── images/         # Trainingsbilder
+│   └── labels/         # YOLO-Annotations
+├── val/
+│   ├── images/         # Validierungsbilder
+│   └── labels/
+└── test/
+    ├── images/         # Testbilder
+    └── labels/
+```
+
+> ⚠️ **Pfad anpassen:** In `data.yaml` muss der `path`-Eintrag auf den absoluten Pfad deines `yolo_dataset`-Ordners zeigen, z.B.:
+> ```yaml
+> path: /home/user/rummikub-counter/backend/yolo_dataset
+> ```
+
+Danach kann das Training direkt gestartet werden:
+
+```bash
+cd backend
+python dataset/train_yolo.py
+```
+
 ## 🎓 Eigene Modelle trainieren
 
 Eine ausführliche Trainings-Anleitung mit CNN- und YOLO-Training findet sich in [TRAINING.md](TRAINING.md).
