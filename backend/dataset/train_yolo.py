@@ -4,17 +4,20 @@ YOLO26 Training: Trainiert ein Object-Detection-Modell für Rummikub.
 Nutzung:
     python train_yolo.py
     python train_yolo.py --epochs 100 --model yolo26n.pt --imgsz 1280
+    python train_yolo.py --hard-weight 3   # Hard Examples 3x duplizieren
 
 Das Modell erkennt und lokalisiert Rummikub-Steine in einem Schritt.
 Ergebnisse werden unter runs/detect/rummikub/ gespeichert.
 """
 
 import argparse
+import shutil
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).parent
 YOLO_DIR = SCRIPT_DIR.parent / "yolo_dataset"
 DATA_YAML = YOLO_DIR / "data.yaml"
+HARD_EXAMPLES_YOLO_PATH = SCRIPT_DIR / "hard_examples_yolo.txt"
 
 
 def check_dataset():
@@ -55,6 +58,8 @@ def main():
     parser.add_argument("--imgsz", type=int, default=1280, help="Bildgröße (Standard: 1280)")
     parser.add_argument("--batch", type=int, default=16, help="Batch Size (Standard: 16)")
     parser.add_argument("--device", type=str, default=None, help="Device: 0 für GPU, cpu für CPU")
+    parser.add_argument("--hard-weight", type=int, default=1,
+                        help="Hard Examples N-fach duplizieren (Standard: 1 = keine Duplikation, z.B. 3 = 3 Kopien)")
     args = parser.parse_args()
 
     print("=" * 60)
@@ -91,6 +96,11 @@ def main():
     print(f"\nLade Basis-Modell: {args.model}")
     model = YOLO(args.model)
 
+    # Hard Examples duplizieren (Oversampling)
+    hard_copies = []
+    if args.hard_weight > 1:
+        hard_copies = _create_hard_copies(args.hard_weight)
+
     # Training starten
     print(f"\nStarte Training: {args.epochs} Epochen, Bildgröße {args.imgsz}")
     print("-" * 60)
@@ -105,7 +115,7 @@ def main():
         project=str(SCRIPT_DIR / "runs" / "detect"),
         name="rummikub",
         exist_ok=True,
-        patience=20,
+        patience=50,
         save=True,
         plots=True,
         verbose=True,
@@ -118,12 +128,15 @@ def main():
         hsv_v=0.5,   # Helligkeitsvariation
     )
 
+    # Hard-Example-Kopien aufräumen
+    if hard_copies:
+        _cleanup_hard_copies(hard_copies)
+
     # Bestes Modell kopieren
     best_model = SCRIPT_DIR / "runs" / "detect" / "rummikub" / "weights" / "best.pt"
     target = SCRIPT_DIR.parent / "models" / "rummikub_yolo.pt"
 
     if best_model.exists():
-        import shutil
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(str(best_model), str(target))
         print(f"\n✅ Bestes Modell kopiert nach: {target}")
@@ -163,6 +176,49 @@ def main():
     print(f"\nTraining abgeschlossen!")
     print(f"Ergebnisse: {SCRIPT_DIR / 'runs' / 'detect' / 'rummikub'}")
     print(f"Nächster Schritt: YOLO in die App integrieren")
+
+
+def _create_hard_copies(weight: int) -> list[Path]:
+    """Dupliziert Hard-Example-Bilder und Labels für Oversampling."""
+    if not HARD_EXAMPLES_YOLO_PATH.exists():
+        print(f"\nKeine Hard Examples: {HARD_EXAMPLES_YOLO_PATH.name} nicht gefunden.")
+        return []
+
+    hard_paths = []
+    for line in HARD_EXAMPLES_YOLO_PATH.read_text(encoding="utf-8").strip().splitlines():
+        p = Path(line.strip())
+        if p.exists():
+            hard_paths.append(p)
+
+    if not hard_paths:
+        print(f"\nKeine gültigen Hard Examples in {HARD_EXAMPLES_YOLO_PATH.name}.")
+        return []
+
+    copies = []
+    for img_path in hard_paths:
+        label_path = img_path.parent.parent / "labels" / (img_path.stem + ".txt")
+        if not label_path.exists():
+            continue
+
+        for i in range(1, weight):
+            img_copy = img_path.parent / f"{img_path.stem}_hard{i}{img_path.suffix}"
+            lbl_copy = label_path.parent / f"{label_path.stem}_hard{i}.txt"
+            shutil.copy2(str(img_path), str(img_copy))
+            shutil.copy2(str(label_path), str(lbl_copy))
+            copies.extend([img_copy, lbl_copy])
+
+    print(f"\nHard Examples: {len(hard_paths)} Bilder je {weight-1}x dupliziert ({len(copies)//2} Kopien erstellt)")
+    return copies
+
+
+def _cleanup_hard_copies(copies: list[Path]):
+    """Entfernt die temporären Hard-Example-Kopien nach dem Training."""
+    removed = 0
+    for p in copies:
+        if p.exists():
+            p.unlink()
+            removed += 1
+    print(f"\nHard-Example-Kopien aufgeräumt ({removed} Dateien entfernt)")
 
 
 if __name__ == "__main__":

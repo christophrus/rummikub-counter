@@ -1,0 +1,5 @@
+D:\Github\rummikub-counter\backend\yolo_dataset\train\images\20260320_201335.jpg
+D:\Github\rummikub-counter\backend\yolo_dataset\train\images\20260313_175151.jpg
+D:\Github\rummikub-counter\backend\yolo_dataset\train\images\20260313_173332.jpg
+D:\Github\rummikub-counter\backend\yolo_dataset\train\images\20260321_193721.jpg
+D:\Github\rummikub-counter\backend\yolo_dataset\train\images\20260320_201511.jpg

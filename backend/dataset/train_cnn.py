@@ -4,6 +4,7 @@ CNN Training: Trainiert ein Custom CNN zur Rummikub-Stein-Erkennung.
 Nutzung:
     python train_cnn.py
     python train_cnn.py --epochs 50 --batch-size 32 --lr 0.001
+    python train_cnn.py --hard-weight 3.0   # Hard Examples 3x häufiger samplen
 
 Das Modell erkennt 14 Klassen: Zahlen 1-13 + Joker.
 Nach dem Training wird das beste Modell als 'rummikub_cnn.pth' gespeichert.
@@ -16,7 +17,7 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, WeightedRandomSampler
 from torchvision import datasets, transforms
 
 SCRIPT_DIR = Path(__file__).parent
@@ -24,6 +25,7 @@ TRAIN_DIR = SCRIPT_DIR / "train"
 VAL_DIR = SCRIPT_DIR / "val"
 TEST_DIR = SCRIPT_DIR / "test"
 MODEL_DIR = SCRIPT_DIR.parent / "models"
+HARD_EXAMPLES_PATH = SCRIPT_DIR / "hard_examples.txt"
 
 # 14 Klassen: 1-13 + Joker
 NUM_CLASSES = 14
@@ -86,7 +88,7 @@ class RummikubCNN(nn.Module):
         return x
 
 
-def get_data_loaders(batch_size: int):
+def get_data_loaders(batch_size: int, hard_weight: float = 1.0):
     """Erstellt Train/Val/Test DataLoaders mit Transforms."""
 
     train_transform = transforms.Compose([
@@ -113,9 +115,34 @@ def get_data_loaders(batch_size: int):
     for cls_name, idx in sorted(train_dataset.class_to_idx.items(), key=lambda x: x[1]):
         print(f"  {idx:>2} → {cls_name}")
 
+    # Hard-Example-Gewichtung: Bilder die als korrekt-aber-schwierig bestätigt wurden
+    sampler = None
+    shuffle = True
+    if hard_weight > 1.0 and HARD_EXAMPLES_PATH.exists():
+        hard_paths = set()
+        for line in HARD_EXAMPLES_PATH.read_text(encoding="utf-8").strip().splitlines():
+            p = Path(line.strip())
+            if p.exists():
+                hard_paths.add(str(p))
+
+        if hard_paths:
+            sample_weights = []
+            matched = 0
+            for path, _ in train_dataset.samples:
+                if str(Path(path)) in hard_paths:
+                    sample_weights.append(hard_weight)
+                    matched += 1
+                else:
+                    sample_weights.append(1.0)
+            sampler = WeightedRandomSampler(sample_weights, len(sample_weights))
+            shuffle = False  # Sampler und shuffle sind inkompatibel
+            print(f"\nHard Examples: {matched} von {len(hard_paths)} Einträgen im Trainingsset (Gewicht: {hard_weight:.1f}x)")
+        else:
+            print(f"\nHard Examples: Keine gültigen Einträge in {HARD_EXAMPLES_PATH.name}")
+
     train_loader = DataLoader(train_dataset, batch_size=batch_size,
-                              shuffle=True, num_workers=4, pin_memory=True,
-                              persistent_workers=True)
+                              shuffle=shuffle, sampler=sampler, num_workers=4,
+                              pin_memory=True, persistent_workers=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size,
                             shuffle=False, num_workers=4, pin_memory=True,
                             persistent_workers=True)
@@ -182,6 +209,8 @@ def main():
     parser.add_argument("--batch-size", type=int, default=64, help="Batch Size (Standard: 64)")
     parser.add_argument("--lr", type=float, default=0.001, help="Learning Rate (Standard: 0.001)")
     parser.add_argument("--patience", type=int, default=7, help="Early Stopping Patience (Standard: 7)")
+    parser.add_argument("--hard-weight", type=float, default=1.0,
+                        help="Gewichtung für Hard Examples aus find_mislabeled.py (Standard: 1.0, z.B. 3.0 = 3x häufiger)")
     args = parser.parse_args()
 
     print("=" * 60)
@@ -201,7 +230,7 @@ def main():
         print(f"GPU: {torch.cuda.get_device_name(0)}")
 
     # DataLoaders
-    train_loader, val_loader, test_loader, class_to_idx = get_data_loaders(args.batch_size)
+    train_loader, val_loader, test_loader, class_to_idx = get_data_loaders(args.batch_size, args.hard_weight)
     print(f"\nTrain: {len(train_loader.dataset)} Bilder")
     print(f"Val:   {len(val_loader.dataset)} Bilder")
     if test_loader:

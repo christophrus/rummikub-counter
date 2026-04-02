@@ -16,7 +16,7 @@ Steuerung (CNN-Modus):
     1-9         → Bild in Klasse 1-9 verschieben
     F1=10, F2=11, F3=12, F4=13
     j           → Bild als Joker markieren
-    k / Enter   → Label ist korrekt, weiter
+    k / Enter   → Label ist korrekt, weiter (wird als Hard Example gespeichert)
     d / Entf    → Bild löschen
     q           → Beenden
 
@@ -41,6 +41,8 @@ SCRIPT_DIR = Path(__file__).parent
 MODEL_PATH = SCRIPT_DIR.parent / "models" / "rummikub_cnn.pth"
 YOLO_MODEL_PATH = SCRIPT_DIR.parent / "models" / "rummikub_yolo.pt"
 YOLO_DIR = SCRIPT_DIR.parent / "yolo_dataset"
+HARD_EXAMPLES_PATH = SCRIPT_DIR / "hard_examples.txt"
+HARD_EXAMPLES_YOLO_PATH = SCRIPT_DIR / "hard_examples_yolo.txt"
 
 NUM_CLASSES = 14
 IMG_WIDTH = 64
@@ -198,6 +200,7 @@ def review_cnn_suspects(suspects, idx_to_class):
     deleted = 0
     kept = 0
     idx = 0
+    hard_examples_file = open(str(HARD_EXAMPLES_PATH), "a", encoding="utf-8")
 
     while idx < len(suspects):
         s = suspects[idx]
@@ -243,6 +246,7 @@ def review_cnn_suspects(suspects, idx_to_class):
         if key == ord('q'):
             break
         elif key in (ord('k'), 13):  # k oder Enter = korrekt
+            hard_examples_file.write(str(s["path"]) + "\n")
             kept += 1
             idx += 1
         elif key in (ord('d'), 65535, 3014656):  # d oder Entf = löschen
@@ -274,10 +278,11 @@ def review_cnn_suspects(suspects, idx_to_class):
                 idx += 1
 
     cv2.destroyAllWindows()
+    hard_examples_file.close()
 
     print(f"\n--- Zusammenfassung ---")
     print(f"  Überprüft: {idx}/{len(suspects)}")
-    print(f"  Korrekt bestätigt: {kept}")
+    print(f"  Korrekt bestätigt: {kept} (gespeichert in {HARD_EXAMPLES_PATH.name})")
     print(f"  Verschoben: {moved}")
     print(f"  Gelöscht: {deleted}")
 
@@ -425,7 +430,9 @@ def review_yolo_suspects(suspects):
     print(f"{'='*60}\n")
 
     edited = 0
+    confirmed = 0
     idx = 0
+    hard_examples_file = open(str(HARD_EXAMPLES_YOLO_PATH), "a", encoding="utf-8")
 
     while idx < len(suspects):
         s = suspects[idx]
@@ -489,15 +496,34 @@ def review_yolo_suspects(suspects):
                 "--split", s["split"],
             ])
             edited += 1
+
+            # Nach Editor: Bild nochmal zeigen, k = korrekt → Hard Example speichern
+            img2 = cv2.imread(str(s["img_path"]))
+            if img2 is not None:
+                h2, w2 = img2.shape[:2]
+                scale2 = min(1600 / w2, 900 / h2, 1.0)
+                disp2 = cv2.resize(img2, (int(w2 * scale2), int(h2 * scale2))) if scale2 < 1.0 else img2
+                cv2.namedWindow("YOLO Mislabel Review", cv2.WINDOW_NORMAL)
+                cv2.resizeWindow("YOLO Mislabel Review", disp2.shape[1], disp2.shape[0])
+                cv2.imshow("YOLO Mislabel Review", disp2)
+                print(f"    → Editor geschlossen. k=korrekt (Hard Example), andere Taste=weiter")
+                key2 = cv2.waitKey(0) & 0xFFFF
+                if key2 in (ord('k'), 13):
+                    hard_examples_file.write(str(s["img_path"]) + "\n")
+                    confirmed += 1
             idx += 1
         elif key in (ord('k'), 13):
+            hard_examples_file.write(str(s["img_path"]) + "\n")
+            confirmed += 1
             idx += 1
 
     cv2.destroyAllWindows()
+    hard_examples_file.close()
 
     print(f"\n--- Zusammenfassung ---")
     print(f"  Überprüft: {idx}/{len(suspects)}")
     print(f"  Im Editor bearbeitet: {edited}")
+    print(f"  Korrekt bestätigt: {confirmed} (gespeichert in {HARD_EXAMPLES_YOLO_PATH.name})")
 
 
 # --- Main ---

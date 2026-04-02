@@ -1,0 +1,66 @@
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+    400/400      5.57G     0.3109     0.1008   0.001373         94       1280: 100% ━━━━━━━━━━━━ 84/84 2.9it/s 29.2s
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 11/11 4.8it/s 2.3s
+                   all        165       5325      0.998      0.997      0.995      0.947
+
+400 epochs completed in 3.938 hours.
+Optimizer stripped from D:\Github\rummikub-counter\backend\dataset\runs\detect\rummikub\weights\last.pt, 5.5MB
+Optimizer stripped from D:\Github\rummikub-counter\backend\dataset\runs\detect\rummikub\weights\best.pt, 5.5MB
+
+Validating D:\Github\rummikub-counter\backend\dataset\runs\detect\rummikub\weights\best.pt...
+Ultralytics 8.4.32  Python-3.11.0 torch-2.10.0+cu126 CUDA:0 (NVIDIA GeForce RTX 3060, 12287MiB)
+YOLO26n summary (fused): 122 layers, 2,377,566 parameters, 0 gradients, 5.2 GFLOPs
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 11/11 4.8it/s 2.3s
+                   all        165       5325      0.998      0.996      0.995      0.949
+                     1         85        428      0.998          1      0.995      0.955
+                     2         74        339      0.997      0.997      0.995      0.956
+                     3         74        323      0.994      0.996      0.995      0.941
+                     4         68        318          1          1      0.995      0.958
+                     5         72        321      0.999          1      0.995      0.955
+                     6         75        319      0.999          1      0.995       0.94
+                     7         81        414      0.998      0.995      0.995      0.945
+                     9         95        484          1      0.998      0.995      0.942
+                    10         82        404      0.998       0.99      0.995      0.942
+                    11         87        438      0.999      0.993      0.995      0.948
+                    12         92        456      0.995      0.996      0.995      0.949
+                    13         73        326          1       0.99      0.995       0.95
+                 joker        155        310      0.999          1      0.995      0.964
+Speed: 0.5ms preprocess, 6.3ms inference, 0.0ms loss, 0.3ms postprocess per image
+Results saved to D:\Github\rummikub-counter\backend\dataset\runs\detect\rummikub
+
+Hard-Example-Kopien aufgeräumt (8 Dateien entfernt)
+
+✅ Bestes Modell kopiert nach: D:\Github\rummikub-counter\backend\models\rummikub_yolo.pt
+
+============================================================
+  Evaluation auf Validierungsdaten
+============================================================
+Ultralytics 8.4.32  Python-3.11.0 torch-2.10.0+cu126 CUDA:0 (NVIDIA GeForce RTX 3060, 12287MiB)
+YOLO26n summary (fused): 122 layers, 2,377,566 parameters, 0 gradients, 5.2 GFLOPs
+val: Fast image access  (ping: 0.10.1 ms, read: 1150.5528.8 MB/s, size: 6262.6 KB)
+val: Scanning D:\Github\rummikub-counter\backend\yolo_dataset\val\labels.cache... 165 images, 0 backgrounds, 0 corrupt: 100% ━━━━━━━━━━━━ 165/165  0.0s
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 11/11 1.2it/s 9.2s
+                   all        165       5325      0.998      0.996      0.995      0.949
+                     1         85        428      0.998          1      0.995      0.956
+                     2         74        339      0.998      0.997      0.995      0.956
+                     3         74        323      0.992      0.994      0.995      0.942
+                     4         68        318      0.999          1      0.995      0.958
+                     5         72        321      0.999          1      0.995      0.956
+                     6         75        319      0.999          1      0.995       0.94
+                     7         81        414      0.998      0.995      0.995      0.945
+                     8         88        445          1      0.993      0.995       0.94
+                     9         95        484          1      0.998      0.995      0.942
+                    10         82        404      0.997      0.993      0.995      0.943
+                    11         87        438      0.999      0.993      0.995      0.948
+                    12         92        456      0.998      0.996      0.995      0.949
+                    13         73        326          1       0.99      0.995      0.948
+                 joker        155        310          1      0.999      0.995      0.963
+Speed: 4.8ms preprocess, 8.0ms inference, 0.0ms loss, 0.3ms postprocess per image
+Results saved to D:\Github\rummikub-counter\backend\dataset\runs\detect\val22
+
+mAP50:    99.5%
+mAP50-95: 94.9%
+
+ℹ️  Keine Testbilder vorhanden, Test-Evaluation übersprungen.
+
+Training abgeschlossen!
