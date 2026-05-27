@@ -169,6 +169,9 @@ async def analyze_image_debug(request: Request, file: UploadFile = File(...)):
     detection_mode = getattr(request.app.state, "detection_mode", "cnn")
 
     if detection_mode == "yolo":
+        resized, orientation = correct_orientation(resized)
+        if orientation != 0:
+            logger.info(f"Debug: Bild um {orientation}° gedreht -> korrigiert.")
         detections = detect_and_classify(resized)
         tile_regions = [{"x": d["x"], "y": d["y"], "w": d["w"], "h": d["h"]} for d in detections]
         results = [{"number": d["number"]} for d in detections]
