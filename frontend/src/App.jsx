@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import ImageUpload from './components/ImageUpload';
 import ResultDisplay from './components/ResultDisplay';
@@ -12,6 +12,25 @@ function App() {
   const [uploadedImage, setUploadedImage] = useState(null);
   const [uploadedFile, setUploadedFile] = useState(null);
   const { t } = useTranslation();
+
+  // Firefox auf Android kann die Seite aus dem Speicher werfen,
+  // wenn die Kamera ein sehr großes Foto macht. Wenn die Seite
+  // aus dem bfcache wiederhergestellt wird, ist der State verloren
+  // und die UI zeigt einen veralteten Ladezustand. Wir erkennen
+  // bfcache-Restores und setzen den Lade-Indikator zurück.
+  useEffect(() => {
+    const handlePageShow = (event) => {
+      if (event.persisted) {
+        // Seite wurde aus bfcache wiederhergestellt
+        // (z.B. nachdem Firefox die Seite wegen Speicherdruck
+        //  durch ein Kamera-Foto aus dem RAM geworfen hat)
+        setIsLoading(false);
+      }
+    };
+
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
 
   const handleAnalysisStart = () => {
     setIsLoading(true);

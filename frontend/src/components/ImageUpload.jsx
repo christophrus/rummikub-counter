@@ -3,6 +3,64 @@ import { useTranslation } from 'react-i18next';
 import { analyzeImage } from '../services/api';
 import './ImageUpload.css';
 
+// Maximale Bildgröße: längere Seite auf diesen Wert begrenzen
+// Reduziert Speicherdruck auf mobilen Geräten massiv und verhindert
+// Page-Reloads in Firefox, wenn Kamera-Fotos zu groß sind.
+const MAX_IMAGE_PX = 1920;
+
+/**
+ * Verkleinert ein Bild client-seitig via Canvas auf max MAX_IMAGE_PX.
+ * Gibt ein Blob (image/jpeg, Qualität 0.85) zurück – deutlich kleiner
+ * als das Kamera-Original, was Speicher und Bandbreite spart.
+ */
+function resizeImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const { naturalWidth: w, naturalHeight: h } = img;
+
+      // Nur verkleinern, wenn nötig
+      if (Math.max(w, h) <= MAX_IMAGE_PX) {
+        resolve(file);
+        return;
+      }
+
+      const scale = MAX_IMAGE_PX / Math.max(w, h);
+      const newW = Math.round(w * scale);
+      const newH = Math.round(h * scale);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = newW;
+      canvas.height = newH;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, newW, newH);
+
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            resolve(new File([blob], file.name || 'camera.jpg', { type: 'image/jpeg' }));
+          } else {
+            // Fallback: Original verwenden
+            resolve(file);
+          }
+        },
+        'image/jpeg',
+        0.85
+      );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file); // Fallback: Original
+    };
+
+    img.src = url;
+  });
+}
+
 function ImageUpload({ onAnalysisStart, onAnalysisComplete, onAnalysisError, onImageSelected, onFileSelected, isLoading }) {
   const fileInputRef = useRef(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -15,17 +73,21 @@ function ImageUpload({ onAnalysisStart, onAnalysisComplete, onAnalysisError, onI
       return;
     }
 
+    // Bild client-seitig verkleinern, um Speicherdruck zu reduzieren
+    // (besonders wichtig für mobile Firefox mit Kamera-Fotos)
+    const resizedFile = await resizeImage(file);
+
     // Vorschau erstellen
-    const imageUrl = URL.createObjectURL(file);
+    const imageUrl = URL.createObjectURL(resizedFile);
     setPreview(imageUrl);
     onImageSelected(imageUrl);
-    onFileSelected(file);
+    onFileSelected(resizedFile);
 
     // Analyse starten
     onAnalysisStart();
 
     try {
-      const result = await analyzeImage(file);
+      const result = await analyzeImage(resizedFile);
       onAnalysisComplete(result);
     } catch (err) {
       const message =
@@ -88,6 +150,7 @@ function ImageUpload({ onAnalysisStart, onAnalysisComplete, onAnalysisError, onI
         ref={fileInputRef}
         type="file"
         accept="image/*"
+        capture="environment"
         onChange={handleChange}
         hidden
         disabled={isLoading}
