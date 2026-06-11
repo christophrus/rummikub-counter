@@ -25,6 +25,7 @@ backend/dataset/tiles_augmented/
 backend/yolo_dataset/test/
 backend/yolo_dataset/train/
 backend/yolo_dataset/val/
+backend/orientation_cache/
 
 
 # Build

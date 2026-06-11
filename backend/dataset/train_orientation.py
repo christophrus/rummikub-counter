@@ -26,10 +26,49 @@ from torchvision import transforms, models
 SCRIPT_DIR = Path(__file__).parent
 YOLO_DIR = SCRIPT_DIR.parent / "yolo_dataset"
 MODEL_OUT = SCRIPT_DIR.parent / "models" / "orientation_cnn.pth"
+CACHE_DIR = SCRIPT_DIR.parent / "orientation_cache"
 
 # Klassen: 0=aufrecht, 1=90° CW, 2=180°, 3=270° CW
 ORIENTATIONS = [0, 90, 180, 270]
 ORI_TO_IDX = {0: 0, 90: 1, 180: 2, 270: 3}
+
+
+def pre_cache_images(image_paths: list[Path], imgsz: int) -> Path:
+    """Resized alle Bilder auf imgsz x imgsz und speichert sie im Cache-Ordner.
+
+    Returns:
+        Path zum Cache-Ordner mit den resizeten Bildern.
+    """
+    import time
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    
+    # Pruefe welche Bilder bereits gecached sind
+    missing = []
+    for p in image_paths:
+        cached = CACHE_DIR / f"{p.stem}.jpg"
+        if not cached.exists():
+            missing.append(p)
+    
+    if not missing:
+        print(f"Disk-Cache vollstaendig: {len(image_paths)} Bilder in {CACHE_DIR}")
+        return CACHE_DIR
+    
+    print(f"Resize {len(missing)}/{len(image_paths)} Bilder auf {imgsz}x{imgsz} -> {CACHE_DIR}...")
+    t0 = time.time()
+    for i, p in enumerate(missing):
+        img = cv2.imread(str(p))
+        if img is None:
+            img = np.zeros((imgsz, imgsz, 3), dtype=np.uint8)
+        else:
+            img = cv2.resize(img, (imgsz, imgsz), interpolation=cv2.INTER_AREA)
+        cv2.imwrite(str(CACHE_DIR / f"{p.stem}.jpg"), img, [cv2.IMWRITE_JPEG_QUALITY, 95])
+        if (i + 1) % 100 == 0 or i == len(missing) - 1:
+            elapsed = time.time() - t0
+            eta = elapsed / (i + 1) * (len(missing) - i - 1) if i < len(missing) - 1 else 0
+            print(f"  ... {i+1}/{len(missing)} ({elapsed:.1f}s, ETA {eta:.1f}s)", flush=True)
+    elapsed = time.time() - t0
+    print(f"Cache fertig: {len(missing)} Bilder in {elapsed:.1f}s", flush=True)
+    return CACHE_DIR
 
 
 def rotate_image(image: np.ndarray, angle: int) -> np.ndarray:
@@ -61,18 +100,18 @@ def collect_images() -> list[Path]:
 
 
 class OrientationDataset(Dataset):
-    """Dataset das jedes Bild in allen 4 Orientierungen liefert."""
+    """Dataset das jedes Bild in allen 4 Orientierungen liefert.
+    Laedt aus dem Disk-Cache (vorab resizete 224x224 JPEGs)."""
 
-    def __init__(self, image_paths: list[Path], imgsz: int, augment: bool = False):
-        self.samples = []  # (path, angle)
+    def __init__(self, image_paths: list[Path], imgsz: int, cache_dir: Path, augment: bool = False):
+        self.samples = []  # (cached_path, angle)
         for p in image_paths:
+            cached = cache_dir / f"{p.stem}.jpg"
             for angle in ORIENTATIONS:
-                self.samples.append((p, angle))
-        self.imgsz = imgsz
+                self.samples.append((cached, angle))
         self.augment = augment
         self.transform = transforms.Compose([
             transforms.ToPILImage(),
-            transforms.Resize((imgsz, imgsz)),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                  std=[0.229, 0.224, 0.225]),
@@ -82,11 +121,10 @@ class OrientationDataset(Dataset):
         return len(self.samples)
 
     def __getitem__(self, idx):
-        path, angle = self.samples[idx]
-        img = cv2.imread(str(path))
+        cached_path, angle = self.samples[idx]
+        img = cv2.imread(str(cached_path))
         if img is None:
-            # Fallback: schwarzes Bild
-            img = np.zeros((self.imgsz, self.imgsz, 3), dtype=np.uint8)
+            img = np.zeros((224, 224, 3), dtype=np.uint8)
 
         img = rotate_image(img, angle)
 
@@ -112,7 +150,7 @@ def main():
     parser.add_argument("--imgsz", type=int, default=224, help="Bildgroesse (Standard: 224)")
     parser.add_argument("--batch", type=int, default=32, help="Batch Size (Standard: 32)")
     parser.add_argument("--lr", type=float, default=0.001, help="Learning Rate (Standard: 0.001)")
-    parser.add_argument("--max-images", type=int, default=100, help="Max. Anzahl Bilder (Standard: 100)")
+    parser.add_argument("--max-images", type=int, default=900, help="Max. Anzahl Bilder (Standard: 900)")
     args = parser.parse_args()
 
     print("=" * 60)
@@ -139,11 +177,17 @@ def main():
     print(f"Train: {len(train_images)} Bilder ({len(train_images) * 4} Samples)")
     print(f"Val:   {len(val_images)} Bilder ({len(val_images) * 4} Samples)")
 
-    train_dataset = OrientationDataset(train_images, args.imgsz, augment=True)
-    val_dataset = OrientationDataset(val_images, args.imgsz, augment=False)
+    # Pre-cache: Bilder einmalig auf imgsz x imgsz verkleinern (Disk)
+    all_unique = sorted(set(str(p) for p in all_images))
+    cache_dir = pre_cache_images([Path(p) for p in all_unique], args.imgsz)
 
-    train_loader = DataLoader(train_dataset, batch_size=args.batch, shuffle=True, num_workers=4)
-    val_loader = DataLoader(val_dataset, batch_size=args.batch, shuffle=False, num_workers=4)
+    train_dataset = OrientationDataset(train_images, args.imgsz, cache_dir, augment=True)
+    val_dataset = OrientationDataset(val_images, args.imgsz, cache_dir, augment=False)
+
+    train_loader = DataLoader(train_dataset, batch_size=args.batch, shuffle=True, num_workers=0)
+    val_loader = DataLoader(val_dataset, batch_size=args.batch, shuffle=False, num_workers=0)
+
+    print(f"Train-Batches: {len(train_loader)}, Val-Batches: {len(val_loader)}")
 
     # Modell: ResNet-18 (klein und schnell)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -164,12 +208,13 @@ def main():
 
     for epoch in range(args.epochs):
         # --- Train ---
+        print(f"Epoch {epoch+1}/{args.epochs} Training...", flush=True)
         model.train()
         train_loss = 0.0
         train_correct = 0
         train_total = 0
 
-        for inputs, labels in train_loader:
+        for batch_idx, (inputs, labels) in enumerate(train_loader):
             inputs, labels = inputs.to(device), labels.to(device)
             optimizer.zero_grad()
             outputs = model(inputs)
@@ -182,16 +227,20 @@ def main():
             train_total += labels.size(0)
             train_correct += predicted.eq(labels).sum().item()
 
+            if batch_idx % 10 == 0:
+                print(f"  Batch {batch_idx}/{len(train_loader)}", flush=True)
+
         train_acc = train_correct / train_total
 
         # --- Validation ---
+        print(f"Epoch {epoch+1}/{args.epochs} Validation...", flush=True)
         model.eval()
         val_loss = 0.0
         val_correct = 0
         val_total = 0
 
         with torch.no_grad():
-            for inputs, labels in val_loader:
+            for batch_idx, (inputs, labels) in enumerate(val_loader):
                 inputs, labels = inputs.to(device), labels.to(device)
                 outputs = model(inputs)
                 loss = criterion(outputs, labels)
@@ -206,7 +255,7 @@ def main():
 
         print(f"Epoch {epoch+1:3d}/{args.epochs}  "
               f"Train Loss: {train_loss/train_total:.4f}  Acc: {train_acc:.1%}  |  "
-              f"Val Loss: {val_loss/val_total:.4f}  Acc: {val_acc:.1%}")
+              f"Val Loss: {val_loss/val_total:.4f}  Acc: {val_acc:.1%}", flush=True)
 
         # Bestes Modell speichern
         if val_acc > best_val_acc:
