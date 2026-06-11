@@ -1,6 +1,6 @@
 """Service zur Erkennung der Bildorientierung (0/90/180/270 Grad).
 
-Nutzt ein vortrainiertes ResNet-18 das auf Rummikub-Spielfotos trainiert wurde.
+Nutzt ein vortrainiertes MobileNetV3-Small das auf Rummikub-Spielfotos trainiert wurde.
 """
 
 from pathlib import Path
@@ -36,8 +36,8 @@ def load_orientation_model() -> bool:
     checkpoint = torch.load(str(MODEL_PATH), map_location=_device, weights_only=True)
     _imgsz = checkpoint.get("imgsz", 224)
 
-    _model = models.resnet18(weights=None)
-    _model.fc = nn.Linear(_model.fc.in_features, 4)
+    _model = models.mobilenet_v3_small(weights=None)
+    _model.classifier[-1] = nn.Linear(_model.classifier[-1].in_features, 4)
     _model.load_state_dict(checkpoint["model_state_dict"])
     _model.to(_device)
     _model.eval()

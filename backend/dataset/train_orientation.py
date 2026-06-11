@@ -189,12 +189,12 @@ def main():
 
     print(f"Train-Batches: {len(train_loader)}, Val-Batches: {len(val_loader)}")
 
-    # Modell: ResNet-18 (klein und schnell)
+    # Modell: MobileNetV3-Small (sehr klein, ~1.5M Parameter)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}")
 
-    model = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
-    model.fc = nn.Linear(model.fc.in_features, 4)  # 4 Klassen
+    model = models.mobilenet_v3_small(weights=models.MobileNet_V3_Small_Weights.DEFAULT)
+    model.classifier[-1] = nn.Linear(model.classifier[-1].in_features, 4)  # 4 Klassen
     model = model.to(device)
 
     criterion = nn.CrossEntropyLoss()
