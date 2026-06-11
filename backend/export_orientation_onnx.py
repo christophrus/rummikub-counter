@@ -1,4 +1,4 @@
-"""Convert orientation_cnn.pth to ONNX format."""
+"""Convert orientation_cnn.pth to ONNX format (MobileNetV3-Small)."""
 from pathlib import Path
 import torch
 import torch.nn as nn
@@ -12,9 +12,8 @@ ONNX_PATH = MODEL_DIR / "orientation_cnn.onnx"
 checkpoint = torch.load(str(PTH_PATH), map_location="cpu", weights_only=True)
 imgsz = checkpoint.get("imgsz", 224)
 
-# Build model
-model = models.resnet18(weights=None)
-model.fc = nn.Linear(model.fc.in_features, 4)
+# Build model: MobileNetV3-Small with 4-class output
+model = models.mobilenet_v3_small(weights=None, num_classes=4)
 model.load_state_dict(checkpoint["model_state_dict"])
 model.eval()
 
